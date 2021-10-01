@@ -1,0 +1,71 @@
+{
+  "name": "wnc-2021s",
+  "version": "1.0.0",
+  "description": "Back-end web development for WNC project",
+  "main": "dist/server.js",
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "npm run prebuild && tsc",
+    "lint": "eslint . --ext .ts",
+    "start": "ts-node --files ./src/server.ts",
+    "start:prod": "node ./dist/server.js",
+    "start:dev": "ts-node-dev --files ./src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ktt45678/wnc-2021s.git"
+  },
+  "keywords": [
+    "auction"
+  ],
+  "author": "Kaigonia <ktt45678@gmail.com> (https://github.com/ktt45678)",
+  "contributors": [
+    "ngocsotn <nguyenthengoc1998@live.com> (https://github.com/ngocsotn)",
+    "hieu2304 (https://github.com/hieu2304)",
+    "inauu (https://github.com/inauu)",
+    "xizot (https://github.com/xizot)"
+  ],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ktt45678/wnc-2021s/issues"
+  },
+  "homepage": "https://github.com/ktt45678/wnc-2021s#readme",
+  "dependencies": {
+    "@typegoose/auto-increment": "^1.0.0",
+    "@typegoose/typegoose": "^9.0.1",
+    "axios": "^0.21.4",
+    "bcrypt": "^5.0.1",
+    "cache-manager": "^3.4.4",
+    "cache-manager-ioredis": "^2.1.0",
+    "class-transformer": "^0.4.0",
+    "class-validator": "^0.13.1",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "luxon": "^2.0.2",
+    "mongoose": "^6.0.8",
+    "mongoose-sequence": "^5.3.1",
+    "morgan": "^1.10.0",
+    "nanoid": "^3.1.28",
+    "reflect-metadata": "^0.1.13",
+    "rimraf": "^3.0.2",
+    "socket.io": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.0",
+    "@types/cache-manager": "^3.4.2",
+    "@types/cache-manager-ioredis": "^2.0.2",
+    "@types/express": "^4.17.13",
+    "@types/jsonwebtoken": "^8.5.5",
+    "@types/luxon": "^2.0.4",
+    "@types/morgan": "^1.9.3",
+    "@types/node": "^16.10.2",
+    "@typescript-eslint/eslint-plugin": "^4.32.0",
+    "@typescript-eslint/parser": "^4.32.0",
+    "eslint": "^7.32.0",
+    "ts-node": "^10.2.1",
+    "ts-node-dev": "^1.1.8",
+    "typescript": "^4.4.3"
+  }
+}
