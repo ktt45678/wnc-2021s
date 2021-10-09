@@ -10,9 +10,9 @@ export const signJwtAsync = (payload: string | object | Buffer, secretOrPrivateK
   });
 }
 
-export const verifyJwtAsync = (token: string, secretOrPublicKey: Secret, options?: VerifyOptions) => {
-  return new Promise<JwtPayload>((resolve, reject) => {
-    verify(token, secretOrPublicKey, options, (err: VerifyErrors, decoded: JwtPayload) => {
+export const verifyJwtAsync = <T>(token: string, secretOrPublicKey: Secret, options?: VerifyOptions) => {
+  return new Promise<T>((resolve, reject) => {
+    verify(token, secretOrPublicKey, options, (err: VerifyErrors, decoded: T) => {
       if (err)
         reject(err);
       resolve(decoded);

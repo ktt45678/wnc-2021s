@@ -38,11 +38,11 @@ export class User extends TimeStamps {
   role!: string;
 
   @Exclude({ toClassOnly: true })
-  @prop()
+  @prop({ unique: true, sparse: true })
   activationCode?: string;
 
   @Exclude({ toClassOnly: true })
-  @prop()
+  @prop({ unique: true, sparse: true })
   recoveryCode?: string;
 
   @Expose({ toClassOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
