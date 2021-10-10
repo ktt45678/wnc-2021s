@@ -5,10 +5,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConfirmEmailDto } from './dto/confirm-email.dto';
+import { RecoverPasswordDto } from './dto/recover-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { validateBody } from '../../middlewares/validator.middleware';
 import authGuard from '../../middlewares/auth-guard.middleware';
 import admin from './routes/admin/admin.controller';
 import * as authService from './auth.service';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 const router: Router = Router();
 
@@ -43,6 +46,42 @@ router.post('/confirm-email', validateBody(ConfirmEmailDto), async (req: Request
   try {
     const result = await authService.confirmEmail(req.body);
     res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/send-recovery-email', validateBody(RecoverPasswordDto), async (req: Request<any, any, RecoverPasswordDto>, res: Response, next: NextFunction) => {
+  try {
+    await authService.recoverPassword(req.body);
+    res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/reset-password', validateBody(ResetPasswordDto), async (req: Request<any, any, ResetPasswordDto>, res: Response, next: NextFunction) => {
+  try {
+    await authService.resetPassword(req.body);
+    res.status(204).end();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/refresh-token', validateBody(RefreshTokenDto), async (req: Request<any, any, RefreshTokenDto>, res: Response, next: NextFunction) => {
+  try {
+    const result = await authService.refreshToken(req.body);
+    res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/revoke-token', validateBody(RefreshTokenDto), async (req: Request<any, any, RefreshTokenDto>, res: Response, next: NextFunction) => {
+  try {
+    await authService.revokeToken(req.body);
+    res.status(204).end();
   } catch (e) {
     next(e);
   }

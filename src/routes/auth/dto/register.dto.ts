@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import { IsDate, IsEmail, IsNotEmpty, Length, Matches, MaxDate } from 'class-validator';
 
 import { EmailExist } from '../../../common/validators/email-exist.decorator';
+import { ReCaptcha } from '../../../common/validators/recaptcha.decorator';
 import { StatusCode } from '../../../enums/status-code.enum';
 
 export class RegisterDto {
@@ -26,11 +27,15 @@ export class RegisterDto {
   birthdate: Date;
 
   @Type(() => String)
-  @Length(3, 250, { context: { code: StatusCode.STRING_LENGTH } })
+  @Length(3, 200, { context: { code: StatusCode.STRING_LENGTH } })
   address: string;
 
   @Type(() => String)
   @Length(8, 128, { context: { code: StatusCode.STRING_LENGTH } })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]+$/, { message: 'password must contain at least one uppercase letter, one lowercase letter and one number' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]+$/, { context: { code: StatusCode.MATCHES_REGEX }, message: 'password must contain at least one uppercase letter, one lowercase letter and one number' })
   password: string;
+
+  @Type(() => String)
+  @ReCaptcha({ context: { code: StatusCode.INVALID_RECAPTCHA } })
+  recaptcha: string;
 }

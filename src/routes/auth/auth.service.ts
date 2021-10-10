@@ -5,15 +5,22 @@ import { plainToClass } from 'class-transformer';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ConfirmEmailDto } from './dto/confirm-email.dto';
+import { RecoverPasswordDto } from './dto/recover-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JWT } from './entities/jwt.entity';
+import { AuthUser } from './entities/auth-user.entity';
+import { JwtWhitelist } from './entities/jwt-whitelist.entity';
 import { userModel, User } from '../../models';
 import { Role } from '../../enums/role.enum';
 import { AccountType } from '../../enums/account-type.enum';
 import { SIBTemplate } from '../../enums/sendinblue-template.enum';
 import { StatusCode } from '../../enums/status-code.enum';
+import { CacheKey } from '../../enums/cache-key.enum';
 import { HttpException } from '../../common/exceptions/http.exception';
 import { signJwtAsync, verifyJwtAsync } from '../../utils/jwt.util';
 import { sendEmailSIB } from '../../modules/email.module';
+import { redisCache } from '../../modules/redis.module';
 import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME, WEBSITE_URL } from '../../config';
 
 export const createAccount = async (registerDto: RegisterDto, role: Role = Role.USER, accountType: AccountType = AccountType.BIDDER) => {
@@ -63,6 +70,8 @@ export const createJwtToken = async (user: User) => {
     signJwtAsync(payload, ACCESS_TOKEN_SECRET, { expiresIn: ACCESS_TOKEN_LIFETIME }),
     signJwtAsync(payload, REFRESH_TOKEN_SECRET, { expiresIn: REFRESH_TOKEN_LIFETIME })
   ]);
+  await redisCache.set(`${CacheKey.REFRESH_TOKEN}:${refreshToken}`, { email: user.email, password: user.password },
+    { ttl: REFRESH_TOKEN_LIFETIME });
   const jwt = plainToClass(JWT, { accessToken, refreshToken });
   return jwt;
 }
@@ -72,11 +81,58 @@ export const verifyAccessToken = async (accessToken: string) => {
     const payload = await verifyJwtAsync<User>(accessToken, ACCESS_TOKEN_SECRET);
     return payload;
   } catch {
-    throw new HttpException({ status: 400, message: 'Unauthorized', code: StatusCode.UNAUTHORIZED });
+    throw new HttpException({ status: 401, message: 'Unauthorized', code: StatusCode.UNAUTHORIZED });
   }
 }
 
-export const sendConfirmationEmail = async (user: User, activationCode?: string) => {
+export const recoverPassword = async (recoverPasswordDto: RecoverPasswordDto) => {
+  const recoveryCode = await nanoid();
+  const user = await userModel.findOneAndUpdate({ email: recoverPasswordDto.email }, { recoveryCode }, { new: true }).lean().exec();
+  if (!user)
+    throw new HttpException({ status: 404, message: 'Email does not exist', code: StatusCode.EMAIL_NOT_EXIST });
+  return sendEmailSIB(user.email, user.fullName, SIBTemplate.RESET_PASSWORD, {
+    recipient_name: user.fullName,
+    button_url: `${WEBSITE_URL}/reset-password?id=${user._id}&code=${recoveryCode}`
+  });
+}
+
+export const resetPassword = async (resetPasswordDto: ResetPasswordDto) => {
+  const hashedPassword = await hashPassword(resetPasswordDto.password);
+  const user = await userModel.findOneAndUpdate({ $and: [{ _id: resetPasswordDto.id }, { recoveryCode: resetPasswordDto.code }] },
+    { $set: { password: hashedPassword }, $unset: { recoveryCode: 1 } }).lean().exec();
+  if (!user)
+    throw new HttpException({ status: 404, message: 'Recovery code not found', code: StatusCode.RECOVERY_CODE_NOT_FOUND });
+}
+
+export const refreshToken = async (refreshTokenDto: RefreshTokenDto) => {
+  const payload = await verifyRefreshToken(refreshTokenDto.token);
+  const user = await userModel.findById(payload._id).lean().exec();
+  if (!user)
+    throw new HttpException({ status: 401, message: 'User not found', code: StatusCode.UNAUTHORIZED_NO_USER });
+  const refreshTokenData = await redisCache.get<JwtWhitelist>(`${CacheKey.REFRESH_TOKEN}:${refreshTokenDto.token}`);
+  if (!refreshTokenData)
+    throw new HttpException({ status: 401, message: 'Your refresh token has already been revoked', code: StatusCode.TOKEN_REVOKED });
+  await redisCache.del(`${CacheKey.REFRESH_TOKEN}:${refreshTokenDto.token}`);
+  if (refreshTokenData.email !== user.email || refreshTokenData.password !== user.password)
+    throw new HttpException({ status: 401, message: 'Your email or password has been changed, please login again', code: StatusCode.CREDENTIALS_CHANGED });
+  return createJwtToken(user);
+}
+
+export const revokeToken = async (refreshTokenDto: RefreshTokenDto) => {
+  await verifyRefreshToken(refreshTokenDto.token);
+  await redisCache.del(`${CacheKey.REFRESH_TOKEN}:${refreshTokenDto.token}`);
+}
+
+const verifyRefreshToken = async (refreshToken: string) => {
+  try {
+    const payload = await verifyJwtAsync<User>(refreshToken, REFRESH_TOKEN_SECRET);
+    return payload;
+  } catch {
+    throw new HttpException({ status: 401, message: 'Unauthorized', code: StatusCode.UNAUTHORIZED });
+  }
+}
+
+export const sendConfirmationEmail = async (user: AuthUser, activationCode?: string) => {
   if (user.activated)
     throw new HttpException({ status: 422, message: 'User has already been activated', code: StatusCode.USER_ALREADY_ACTIVATED });
   // Generate a new activation code if not given

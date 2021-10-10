@@ -1,0 +1,31 @@
+name: 'Heroku Deployment'
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the repo
+        uses: actions/checkout@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          cache: 'npm'
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.12.12
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: 'morgan-api'
+          heroku_email: ${{secrets.HEROKU_EMAIL}}
+          healthcheck: 'https://morgan-api.herokuapp.com'
+          checkstring: '{"message":"Index"}'
+          rollbackonhealthcheckfailed: true
+          procfile: 'web: npm run start:prod'
