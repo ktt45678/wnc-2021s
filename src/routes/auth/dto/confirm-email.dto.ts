@@ -4,9 +4,9 @@ import { IsNotEmpty } from 'class-validator';
 import { StatusCode } from '../../../enums/status-code.enum';
 
 export class ConfirmEmailDto {
-  @Type(() => String)
+  @Type(() => Number)
   @IsNotEmpty({ context: { code: StatusCode.NOT_EMPTY } })
-  id: string;
+  id: number;
 
   @Type(() => String)
   @IsNotEmpty({ context: { code: StatusCode.NOT_EMPTY } })

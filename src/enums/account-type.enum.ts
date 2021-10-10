@@ -1,4 +1,5 @@
 export enum AccountType {
   BIDDER = 'bidder',
-  SELLER = 'seller'
+  SELLER = 'seller',
+  ADMIN = 'admin'
 }

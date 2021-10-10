@@ -4,7 +4,7 @@ export const MONGO_URL = process.env.MONGO_URL || '';
 export const REDIS_URL = process.env.REDIS_URL || '';
 export const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 export const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET;
-export const ACCESS_TOKEN_LIFETIME = 3600;
+export const ACCESS_TOKEN_LIFETIME = NODE_ENV === 'development' ? 3600 : 300;
 export const REFRESH_TOKEN_LIFETIME = 2592000;
 export const WEBSITE_URL = process.env.WEBSITE_URL;
 export const EMAIL_SENDER = process.env.EMAIL_SENDER;

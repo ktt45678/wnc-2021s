@@ -52,7 +52,7 @@ export class User extends TimeStamps {
   @prop({ required: true, default: DEFAULT_ACCOUNT_POINT, min: 0 })
   point?: number;
 
-  @prop({ required: function () { return this.role === Role.USER; }, enum: [AccountType.BIDDER, AccountType.SELLER] })
+  @prop({ required: true, enum: [AccountType.BIDDER, AccountType.SELLER, AccountType.ADMIN] })
   accountType?: string;
 
   @Expose({ toClassOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })

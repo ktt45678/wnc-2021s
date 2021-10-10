@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid/async';
 import bcrypt from 'bcrypt';
-import { classToPlain, plainToClass } from 'class-transformer';
+import { plainToClass } from 'class-transformer';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -16,7 +16,7 @@ import { signJwtAsync, verifyJwtAsync } from '../../utils/jwt.util';
 import { sendEmailSIB } from '../../modules/email.module';
 import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME, WEBSITE_URL } from '../../config';
 
-export const createAccount = async (registerDto: RegisterDto) => {
+export const createAccount = async (registerDto: RegisterDto, role: Role = Role.USER, accountType: AccountType = AccountType.BIDDER) => {
   const hashedPassword = await hashPassword(registerDto.password);
   const code = await nanoid();
   const user = new userModel({
@@ -25,9 +25,9 @@ export const createAccount = async (registerDto: RegisterDto) => {
     birthdate: registerDto.birthdate,
     address: registerDto.address,
     password: hashedPassword,
-    role: Role.USER,
+    role: role,
     activationCode: code,
-    accountType: AccountType.BIDDER
+    accountType: accountType
   });
   await user.save();
   // Transform a plain object into a class instance
@@ -38,8 +38,8 @@ export const createAccount = async (registerDto: RegisterDto) => {
   return createJwtToken(transformedUser);
 }
 
-export const authenticate = async (loginDto: LoginDto) => {
-  const user = await findByEmail(loginDto.email);
+export const authenticate = async (loginDto: LoginDto, role: Role = Role.USER) => {
+  const user = await userModel.findOne({ $and: [{ email: loginDto.email }, { role: role }] }).lean().exec();
   if (!user || !(await comparePassword(loginDto.password, user.password)))
     throw new HttpException({ status: 400, message: 'Incorrect email or password', code: StatusCode.INCORRECT_LOGIN });
   const transform = plainToClass(User, user);
