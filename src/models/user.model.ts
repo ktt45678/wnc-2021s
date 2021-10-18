@@ -15,37 +15,37 @@ export class User extends TimeStamps {
   @prop()
   _id?: number;
 
-  @Expose({ toClassOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
+  @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
   @prop({ required: true, unique: true })
   email!: string;
 
   @prop({ required: true })
   fullName!: string;
 
-  @Expose({ toClassOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
+  @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
   @prop()
   birthdate?: Date;
 
-  @Expose({ toClassOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
+  @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
   @prop({ required: true })
   address!: string;
 
-  @Exclude({ toClassOnly: true })
+  @Exclude({ toPlainOnly: true })
   @prop({ required: true })
   password!: string;
 
   @prop({ required: true, enum: [Role.ADMIN, Role.USER] })
   role!: string;
 
-  @Exclude({ toClassOnly: true })
+  @Exclude({ toPlainOnly: true })
   @prop({ unique: true, sparse: true })
   activationCode?: string;
 
-  @Exclude({ toClassOnly: true })
+  @Exclude({ toPlainOnly: true })
   @prop({ unique: true, sparse: true })
   recoveryCode?: string;
 
-  @Expose({ toClassOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
+  @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
   @prop({ required: true, default: false })
   activated?: boolean;
 
@@ -55,11 +55,11 @@ export class User extends TimeStamps {
   @prop({ required: true, enum: [AccountType.BIDDER, AccountType.SELLER, AccountType.ADMIN] })
   accountType?: string;
 
-  @Expose({ toClassOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
+  @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
   @prop({ ref: () => UserRequest })
   requests?: Ref<UserRequest>[];
 
-  @Expose({ toClassOnly: true, groups: [UserGroup.ME] })
+  @Expose({ toPlainOnly: true, groups: [UserGroup.ME] })
   @prop()
   watchlist?: number;
 }

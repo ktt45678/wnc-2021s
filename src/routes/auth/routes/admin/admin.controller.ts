@@ -2,9 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 
 import { RegisterDto } from '../../dto/register.dto';
 import { LoginDto } from '../../dto/login.dto';
-import { ConfirmEmailDto } from '../../dto/confirm-email.dto';
 import { validateBody } from '../../../../middlewares/validator.middleware';
-import authGuard from '../../../../middlewares/auth-guard.middleware';
 import * as adminService from './admin.service';
 
 const router: Router = Router();

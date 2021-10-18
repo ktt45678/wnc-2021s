@@ -7,11 +7,11 @@ import { LoginDto } from './dto/login.dto';
 import { ConfirmEmailDto } from './dto/confirm-email.dto';
 import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { validateBody } from '../../middlewares/validator.middleware';
 import authGuard from '../../middlewares/auth-guard.middleware';
 import admin from './routes/admin/admin.controller';
 import * as authService from './auth.service';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 const router: Router = Router();
 

@@ -17,6 +17,7 @@ import { AccountType } from '../../enums/account-type.enum';
 import { SIBTemplate } from '../../enums/sendinblue-template.enum';
 import { StatusCode } from '../../enums/status-code.enum';
 import { CacheKey } from '../../enums/cache-key.enum';
+import { UserGroup } from '../../enums/user-group.enum';
 import { HttpException } from '../../common/exceptions/http.exception';
 import { signJwtAsync, verifyJwtAsync } from '../../utils/jwt.util';
 import { sendEmailSIB } from '../../modules/email.module';
@@ -40,7 +41,7 @@ export const createAccount = async (registerDto: RegisterDto, role: Role = Role.
   // Transform a plain object into a class instance
   // This would allow us to perform serialization on some properties by using class-transformer
   // See: https://github.com/typestack/class-transformer
-  const transformedUser = plainToClass(User, user.toObject());
+  const transformedUser = plainToClass(User, user.toObject(), { groups: [UserGroup.ME] });
   await sendConfirmationEmail(transformedUser, transformedUser.activationCode);
   return createJwtToken(transformedUser);
 }
@@ -49,7 +50,7 @@ export const authenticate = async (loginDto: LoginDto, role: Role = Role.USER) =
   const user = await userModel.findOne({ $and: [{ email: loginDto.email }, { role: role }] }).lean().exec();
   if (!user || !(await comparePassword(loginDto.password, user.password)))
     throw new HttpException({ status: 400, message: 'Incorrect email or password', code: StatusCode.INCORRECT_LOGIN });
-  const transform = plainToClass(User, user);
+  const transform = plainToClass(User, user, { groups: [UserGroup.ME] });
   return createJwtToken(transform);
 }
 
@@ -59,6 +60,7 @@ export const createJwtToken = async (user: User) => {
     email: user.email,
     birthdate: user.birthdate,
     fullName: user.fullName,
+    address: user.address,
     role: user.role,
     activated: user.activated,
     point: user.point,
