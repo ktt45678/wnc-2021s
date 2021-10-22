@@ -5,7 +5,8 @@ import { AuthGuardOptions } from '../common/entities/auth-guard-options.entity';
 import * as authService from '../routes/auth/auth.service';
 
 const defaultOptions: AuthGuardOptions = {
-  allowGuest: false
+  allowGuest: false,
+  roles: []
 }
 
 export default (options?: AuthGuardOptions) => {
@@ -19,19 +20,22 @@ export default (options?: AuthGuardOptions) => {
         req.user = user;
         return next();
       }
-      return res.status(401).send({ error: 'No authorization' });
+      return res.status(401).send({ message: 'Hãy đăng nhập để sử dụng chức năng này' });
     }
     const accessToken = authorization.split(' ')[1];
     if (!accessToken) {
-      return res.status(401).send({ error: 'Access token is empty' });
+      return res.status(401).send({ message: 'Access token is empty' });
     }
     try {
       user = await authService.verifyAccessToken(accessToken);
       user.isGuest = false;
+      if (options.roles?.length)
+        if (!options.roles.includes(user.role))
+          return res.status(403).send({ message: 'Bạn không có quyền sử dụng tính năng này' });
       req.user = user;
       next()
     } catch {
-      res.status(401).send({ error: 'Unauthorized' });
+      res.status(401).send({ message: 'Unauthorized' });
     }
   }
 }

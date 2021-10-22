@@ -14,7 +14,7 @@ export const validateBody = (cls: ClassConstructor<unknown>) => {
       return next(new HttpException({
         status: 400,
         message: Object.values(errors[0].constraints).join(' AND '),
-        code: Object.values(errors[0]?.contexts)[0]?.code || -1
+        code: errors[0]?.contexts ? Object.values(errors[0]?.contexts)[0]?.code : -1
       }));
     }
     next();
@@ -29,7 +29,7 @@ export const validateParams = (cls: ClassConstructor<unknown>) => {
       return next(new HttpException({
         status: 400,
         message: Object.values(errors[0].constraints).join(' AND '),
-        code: Object.values(errors[0]?.contexts)[0]?.code || -1
+        code: errors[0]?.contexts ? Object.values(errors[0]?.contexts)[0]?.code : -1
       }));
     }
     next();
@@ -44,7 +44,7 @@ export const validateQuery = (cls: ClassConstructor<unknown>) => {
       return next(new HttpException({
         status: 400,
         message: Object.values(errors[0].constraints).join(' AND '),
-        code: Object.values(errors[0]?.contexts)[0]?.code || -1
+        code: errors[0]?.contexts ? Object.values(errors[0]?.contexts)[0]?.code : -1
       }));
     }
     next();

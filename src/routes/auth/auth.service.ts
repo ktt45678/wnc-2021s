@@ -49,7 +49,7 @@ export const createAccount = async (registerDto: RegisterDto) => {
 export const authenticate = async (loginDto: LoginDto) => {
   const user = await userModel.findOne({ email: loginDto.email }).lean().exec();
   if (!user || !(await comparePassword(loginDto.password, user.password)))
-    throw new HttpException({ status: 400, message: 'Incorrect email or password', code: StatusCode.INCORRECT_LOGIN });
+    throw new HttpException({ status: 400, message: 'Email hoặc mật khẩu không đúng', code: StatusCode.INCORRECT_LOGIN });
   const transform = plainToClass(User, user, { groups: [UserGroup.ME] });
   return createJwtToken(transform);
 }
@@ -64,6 +64,7 @@ export const createJwtToken = async (user: User | LeanDocument<User>) => {
     role: user.role,
     activated: user.activated,
     point: user.point,
+    requestUpgrade: user.requestUpgrade,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt
   };
@@ -90,7 +91,7 @@ export const recoverPassword = async (recoverPasswordDto: RecoverPasswordDto) =>
   const recoveryCode = await nanoid();
   const user = await userModel.findOneAndUpdate({ email: recoverPasswordDto.email }, { recoveryCode }, { new: true }).lean().exec();
   if (!user)
-    throw new HttpException({ status: 404, message: 'Email does not exist', code: StatusCode.EMAIL_NOT_EXIST });
+    throw new HttpException({ status: 404, message: 'Không tìm thấy email', code: StatusCode.EMAIL_NOT_EXIST });
   return sendEmailSIB(user.email, user.fullName, SIBTemplate.RESET_PASSWORD, {
     recipient_name: user.fullName,
     button_url: `${WEBSITE_URL}/auth/reset-password?id=${user._id}&code=${recoveryCode}`
@@ -102,7 +103,7 @@ export const resetPassword = async (resetPasswordDto: ResetPasswordDto) => {
   const user = await userModel.findOneAndUpdate({ $and: [{ _id: resetPasswordDto.id }, { recoveryCode: resetPasswordDto.code }] },
     { $set: { password: hashedPassword }, $unset: { recoveryCode: 1 } }).lean().exec();
   if (!user)
-    throw new HttpException({ status: 404, message: 'Recovery code not found', code: StatusCode.RECOVERY_CODE_NOT_FOUND });
+    throw new HttpException({ status: 404, message: 'Mã khôi phục không hợp lệ', code: StatusCode.RECOVERY_CODE_NOT_FOUND });
 }
 
 export const refreshToken = async (refreshTokenDto: RefreshTokenDto) => {
@@ -135,7 +136,7 @@ const verifyRefreshToken = async (refreshToken: string) => {
 
 export const sendConfirmationEmail = async (user: AuthUser | LeanDocument<User> | User, activationCode?: string) => {
   if (user.activated)
-    throw new HttpException({ status: 422, message: 'User has already been activated', code: StatusCode.USER_ALREADY_ACTIVATED });
+    throw new HttpException({ status: 422, message: 'Người dùng đã kích hoạt tài khoản', code: StatusCode.USER_ALREADY_ACTIVATED });
   // Generate a new activation code if not given
   if (!activationCode) {
     activationCode = await nanoid();
@@ -152,7 +153,7 @@ export const confirmEmail = async (confirmEmailDto: ConfirmEmailDto) => {
   const user = await userModel.findOneAndUpdate({ $and: [{ _id: id }, { activationCode: code }] },
     { $unset: { activationCode: 1 }, $set: { activated: true } }, { new: true }).lean().exec();
   if (!user)
-    throw new HttpException({ status: 404, message: 'Activation code not found', code: StatusCode.ACTIVATION_CODE_NOT_FOUND });
+    throw new HttpException({ status: 404, message: 'Mã kích hoạt không hợp lệ', code: StatusCode.ACTIVATION_CODE_NOT_FOUND });
   return createJwtToken(user);
 }
 
