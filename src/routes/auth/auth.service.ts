@@ -1,3 +1,4 @@
+import { LeanDocument } from 'mongoose';
 import { nanoid } from 'nanoid/async';
 import bcrypt from 'bcrypt';
 import { plainToClass } from 'class-transformer';
@@ -53,7 +54,7 @@ export const authenticate = async (loginDto: LoginDto) => {
   return createJwtToken(transform);
 }
 
-export const createJwtToken = async (user: User) => {
+export const createJwtToken = async (user: User | LeanDocument<User>) => {
   const payload = {
     _id: user._id,
     email: user.email,
@@ -132,7 +133,7 @@ const verifyRefreshToken = async (refreshToken: string) => {
   }
 }
 
-export const sendConfirmationEmail = async (user: AuthUser, activationCode?: string) => {
+export const sendConfirmationEmail = async (user: AuthUser | LeanDocument<User> | User, activationCode?: string) => {
   if (user.activated)
     throw new HttpException({ status: 422, message: 'User has already been activated', code: StatusCode.USER_ALREADY_ACTIVATED });
   // Generate a new activation code if not given
@@ -149,9 +150,7 @@ export const sendConfirmationEmail = async (user: AuthUser, activationCode?: str
 export const confirmEmail = async (confirmEmailDto: ConfirmEmailDto) => {
   const { id, code } = confirmEmailDto;
   const user = await userModel.findOneAndUpdate({ $and: [{ _id: id }, { activationCode: code }] },
-    { $unset: { activationCode: 1 }, $set: { activated: true } }, { new: true })
-    .select({ password: 0, activationCode: 0, recoveryCode: 0 })
-    .lean().exec();
+    { $unset: { activationCode: 1 }, $set: { activated: true } }, { new: true }).lean().exec();
   if (!user)
     throw new HttpException({ status: 404, message: 'Activation code not found', code: StatusCode.ACTIVATION_CODE_NOT_FOUND });
   return createJwtToken(user);

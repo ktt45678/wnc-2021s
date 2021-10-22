@@ -12,8 +12,8 @@ export class UserRequest extends TimeStamps {
   @prop()
   _id!: number;
 
-  @prop({ required: true, ref: () => User })
-  user!: Ref<User>;
+  @prop({ required: true, ref: () => User, type: () => Number })
+  user!: Ref<User, number>;
 
   @prop({ required: true })
   message!: string;
