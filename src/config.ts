@@ -14,3 +14,4 @@ export const USER_REQUEST_DURATION = 604800; // 7 days
 export const DEFAULT_ACCOUNT_POINT = 10;
 export const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
 export const DISABLE_RECAPTCHA = !!process.env.DISABLE_RECAPTCHA;
+export const ADMIN_EMAIL = process.env.ADMIN_EMAIL;

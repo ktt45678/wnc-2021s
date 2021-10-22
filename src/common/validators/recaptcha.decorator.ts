@@ -9,7 +9,12 @@ export class ReCaptchaConstraint implements ValidatorConstraintInterface {
     if (DISABLE_RECAPTCHA)
       return true;
     try {
-      const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify?secret=${RECAPTCHA_SECRET}&response=${key}`);
+      const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', {}, {
+        params: {
+          secret: RECAPTCHA_SECRET,
+          response: key
+        }
+      });
       if (response.data.success)
         return true;
       return false;

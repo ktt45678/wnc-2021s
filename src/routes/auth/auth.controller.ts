@@ -4,13 +4,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { SendConfirmationEmailDto } from './dto/send-confirmation-email.dto';
 import { ConfirmEmailDto } from './dto/confirm-email.dto';
 import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { validateBody } from '../../middlewares/validator.middleware';
 import authGuard from '../../middlewares/auth-guard.middleware';
-import admin from './routes/admin/admin.controller';
 import * as authService from './auth.service';
 
 const router: Router = Router();
@@ -33,7 +33,7 @@ router.post('/register', validateBody(RegisterDto), async (req: Request<any, any
   }
 });
 
-router.post('/send-confirmation-email', authGuard(), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/send-confirmation-email', authGuard(), validateBody(SendConfirmationEmailDto), async (req: Request<any, any, SendConfirmationEmailDto>, res: Response, next: NextFunction) => {
   try {
     await authService.sendConfirmationEmail(req.user);
     res.status(204).end();
@@ -86,7 +86,5 @@ router.post('/revoke-token', validateBody(RefreshTokenDto), async (req: Request<
     next(e);
   }
 });
-
-router.use('/admin', admin);
 
 export default router;

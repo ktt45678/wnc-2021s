@@ -13,7 +13,6 @@ import { AuthUser } from './entities/auth-user.entity';
 import { JwtWhitelist } from './entities/jwt-whitelist.entity';
 import { userModel, User } from '../../models';
 import { Role } from '../../enums/role.enum';
-import { AccountType } from '../../enums/account-type.enum';
 import { SIBTemplate } from '../../enums/sendinblue-template.enum';
 import { StatusCode } from '../../enums/status-code.enum';
 import { CacheKey } from '../../enums/cache-key.enum';
@@ -22,11 +21,12 @@ import { HttpException } from '../../common/exceptions/http.exception';
 import { signJwtAsync, verifyJwtAsync } from '../../utils/jwt.util';
 import { sendEmailSIB } from '../../modules/email.module';
 import { redisCache } from '../../modules/redis.module';
-import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME, WEBSITE_URL } from '../../config';
+import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, ACCESS_TOKEN_LIFETIME, REFRESH_TOKEN_LIFETIME, WEBSITE_URL, ADMIN_EMAIL } from '../../config';
 
-export const createAccount = async (registerDto: RegisterDto, role: Role = Role.USER, accountType: AccountType = AccountType.BIDDER) => {
+export const createAccount = async (registerDto: RegisterDto) => {
   const hashedPassword = await hashPassword(registerDto.password);
   const code = await nanoid();
+  const role = registerDto.email === ADMIN_EMAIL ? Role.ADMIN : Role.BIDDER;
   const user = new userModel({
     fullName: registerDto.fullName,
     email: registerDto.email,
@@ -34,8 +34,7 @@ export const createAccount = async (registerDto: RegisterDto, role: Role = Role.
     address: registerDto.address,
     password: hashedPassword,
     role: role,
-    activationCode: code,
-    accountType: accountType
+    activationCode: code
   });
   await user.save();
   // Transform a plain object into a class instance
@@ -46,8 +45,8 @@ export const createAccount = async (registerDto: RegisterDto, role: Role = Role.
   return createJwtToken(transformedUser);
 }
 
-export const authenticate = async (loginDto: LoginDto, role: Role = Role.USER) => {
-  const user = await userModel.findOne({ $and: [{ email: loginDto.email }, { role: role }] }).lean().exec();
+export const authenticate = async (loginDto: LoginDto) => {
+  const user = await userModel.findOne({ email: loginDto.email }).lean().exec();
   if (!user || !(await comparePassword(loginDto.password, user.password)))
     throw new HttpException({ status: 400, message: 'Incorrect email or password', code: StatusCode.INCORRECT_LOGIN });
   const transform = plainToClass(User, user, { groups: [UserGroup.ME] });
@@ -64,7 +63,6 @@ export const createJwtToken = async (user: User) => {
     role: user.role,
     activated: user.activated,
     point: user.point,
-    accountType: user.accountType,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt
   };
@@ -94,7 +92,7 @@ export const recoverPassword = async (recoverPasswordDto: RecoverPasswordDto) =>
     throw new HttpException({ status: 404, message: 'Email does not exist', code: StatusCode.EMAIL_NOT_EXIST });
   return sendEmailSIB(user.email, user.fullName, SIBTemplate.RESET_PASSWORD, {
     recipient_name: user.fullName,
-    button_url: `${WEBSITE_URL}/reset-password?id=${user._id}&code=${recoveryCode}`
+    button_url: `${WEBSITE_URL}/auth/reset-password?id=${user._id}&code=${recoveryCode}`
   });
 }
 
@@ -144,7 +142,7 @@ export const sendConfirmationEmail = async (user: AuthUser, activationCode?: str
   }
   return sendEmailSIB(user.email, user.fullName, SIBTemplate.CONFIRM_EMAIL, {
     recipient_name: user.fullName,
-    button_url: `${WEBSITE_URL}/confirm-email?id=${user._id}&code=${activationCode}`
+    button_url: `${WEBSITE_URL}/auth/confirm-email?id=${user._id}&code=${activationCode}`
   });
 }
 

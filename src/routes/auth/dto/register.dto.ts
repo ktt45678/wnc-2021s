@@ -36,6 +36,7 @@ export class RegisterDto {
   password: string;
 
   @Type(() => String)
+  @IsNotEmpty({ context: { code: StatusCode.NOT_EMPTY } })
   @ReCaptcha({ context: { code: StatusCode.INVALID_RECAPTCHA } })
-  recaptcha: string;
+  reCaptcha: string;
 }

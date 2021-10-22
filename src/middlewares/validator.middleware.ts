@@ -39,7 +39,6 @@ export const validateParams = (cls: ClassConstructor<unknown>) => {
 export const validateQuery = (cls: ClassConstructor<unknown>) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     req.query = plainToClass<any, ParsedQs>(cls, req.query);
-    console.log(req.query);
     const errors = await validate(req.query);
     if (errors.length) {
       return next(new HttpException({
