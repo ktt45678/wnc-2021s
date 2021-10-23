@@ -24,7 +24,7 @@ export class ReCaptchaConstraint implements ValidatorConstraintInterface {
   }
 
   defaultMessage(args: ValidationArguments) {
-    return `${args.property} is invalid`;
+    return `${args.property} không hợp lệ`;
   }
 }
 

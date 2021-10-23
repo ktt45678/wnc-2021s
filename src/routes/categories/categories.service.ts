@@ -11,6 +11,9 @@ import { Paginated } from '../../common/entities/paginated.entity';
 
 export const create = async (createCategoryDto: CreateCategoryDto) => {
   const { name, subName } = createCategoryDto;
+  const checkCategory = await categoryModel.findOne({ $and: [{ name }, { subName }] }).lean().exec();
+  if (checkCategory)
+    throw new HttpException({ status: 400, message: 'Danh mục này đã tồn tại' });
   const category = new categoryModel({ name, subName });
   const newCategory = await category.save();
   return newCategory.toObject();

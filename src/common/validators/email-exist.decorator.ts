@@ -11,7 +11,7 @@ export class EmailExistConstraint implements ValidatorConstraintInterface {
   }
 
   defaultMessage(args: ValidationArguments) {
-    return `${args.property} has already been used`;
+    return `${args.property} đã được sử dụng`;
   }
 }
 
