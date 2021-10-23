@@ -20,7 +20,12 @@ export const findAll = async (paginateCategoryDto: PaginateCategoryDto) => {
   const sortEnum = ['_id', 'name', 'subName', 'createdAt'];
   const fields = { _id: 1, name: 1, subName: 1, createdAt: 1, products: 1 };
   const { page, limit, sort, search } = paginateCategoryDto;
-  const filters: any = search ? { fullName: { $regex: escapeRegExp(search), $options: 'i' } } : {};
+  const filters: any = search ? {
+    $or: [
+      { name: { $regex: escapeRegExp(search), $options: 'i' } },
+      { subName: { $regex: escapeRegExp(search), $options: 'i' } }
+    ]
+  } : {};
   const aggregation = new MongooseAggregation({ page, limit, filters, fields, sortQuery: sort, sortEnum });
   const [data] = await categoryModel.aggregate(aggregation.build()).exec();
   return data || new Paginated();

@@ -6,11 +6,11 @@ import { StatusCode } from '../../../enums/status-code.enum';
 export class CreateCategoryDto {
   @Type(() => String)
   @IsNotEmpty({ context: { code: StatusCode.NOT_EMPTY } })
-  @MaxLength(100)
+  @MaxLength(32)
   name: string;
 
   @Type(() => String)
   @IsNotEmpty({ context: { code: StatusCode.NOT_EMPTY } })
-  @MaxLength(100)
+  @MaxLength(32)
   subName: string;
 }
