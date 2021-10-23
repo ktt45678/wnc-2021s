@@ -4,11 +4,12 @@ import { validateBody, validateQuery } from '../../middlewares/validator.middlew
 import { ParsedQs } from 'qs';
 
 import * as categoryService from './users.service';
-import { PaginateDto } from './dto/paginate.dto';
+import { PaginateUserDto } from './dto/paginate-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 const router: Router = Router();
 
-router.get('/', validateQuery(PaginateDto), async (req: Request<any, any, any, ParsedQs & PaginateDto>, res: Response, next: NextFunction) => {
+router.get('/', validateQuery(PaginateUserDto), async (req: Request<any, any, any, ParsedQs & PaginateUserDto>, res: Response, next: NextFunction) => {
   try {
     const result = await categoryService.findAll(req.query);
     res.status(200).send(result);
@@ -26,7 +27,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-router.patch('/:id', validateBody(PaginateDto), async (req: Request<any, any, PaginateDto>, res: Response, next: NextFunction) => {
+router.patch('/:id', validateBody(UpdateUserDto), async (req: Request<any, any, UpdateUserDto>, res: Response, next: NextFunction) => {
   try {
     const result = await categoryService.update(+req.params.id, req.body);
     res.status(200).send(result);

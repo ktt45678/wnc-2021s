@@ -57,6 +57,10 @@ export class User extends TimeStamps {
   @prop({ default: false })
   requestUpgrade?: boolean;
 
+  @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
+  @prop()
+  canSellUntil?: Date;
+
   @Expose({ toPlainOnly: true, groups: [UserGroup.ME] })
   @prop({ ref: () => Product, type: () => Number })
   watchlist?: mongoose.Types.Array<Ref<Product, number>>;

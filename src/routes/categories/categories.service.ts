@@ -4,6 +4,10 @@ import { plainToClass } from 'class-transformer';
 import { categoryModel, Category } from '../../models';
 import { HttpException } from '../../common/exceptions/http.exception';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { PaginateCategoryDto } from './dto/paginate-category.dto';
+import { escapeRegExp } from '../../utils/string-helper.util';
+import { MongooseAggregation } from '../../utils/mongo-aggregation.util';
+import { Paginated } from '../../common/entities/paginated.entity';
 
 export const create = async (createCategoryDto: CreateCategoryDto) => {
   const { name, subName } = createCategoryDto;
@@ -12,12 +16,21 @@ export const create = async (createCategoryDto: CreateCategoryDto) => {
   return newCategory.toObject();
 }
 
-export const findAll = () => {
+export const findAll = async (paginateCategoryDto: PaginateCategoryDto) => {
+  const sortEnum = ['_id', 'name', 'subName', 'createdAt'];
+  const fields = { _id: 1, name: 1, subName: 1, createdAt: 1, products: 1 };
+  const { page, limit, sort, search } = paginateCategoryDto;
+  const filters: any = search ? { fullName: { $regex: escapeRegExp(search), $options: 'i' } } : {};
+  const aggregation = new MongooseAggregation({ page, limit, filters, fields, sortQuery: sort, sortEnum });
+  const [data] = await categoryModel.aggregate(aggregation.build()).exec();
+  return data || new Paginated();
+  /*
   return categoryModel.aggregate([
     {
       $group: { _id: '$name', children: { $push: { name: '$subName', _id: '$_id' } } }
     }
   ]).exec();
+  */
 }
 
 export const findOne = async (id: number) => {

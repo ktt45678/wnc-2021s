@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { validateBody } from '../../middlewares/validator.middleware';
+import { validateBody, validateQuery } from '../../middlewares/validator.middleware';
 //import { ParamsDictionary } from 'express-serve-static-core';
-//import { ParsedQs } from 'qs';
+import { ParsedQs } from 'qs';
 
 import * as categoryService from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { PaginateCategoryDto } from './dto/paginate-category.dto';
 
 const router: Router = Router();
 
@@ -17,9 +18,9 @@ router.post('/', validateBody(CreateCategoryDto), async (req: Request<any, any, 
   }
 });
 
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', validateQuery(PaginateCategoryDto), async (req: Request<any, any, any, ParsedQs & PaginateCategoryDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.findAll();
+    const result = await categoryService.findAll(req.query);
     res.status(200).send(result);
   } catch (e) {
     next(e);
