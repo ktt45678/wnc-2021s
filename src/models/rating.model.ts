@@ -3,13 +3,16 @@ import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
 import { AutoIncrementID } from '@typegoose/auto-increment';
 
 import { RatingType } from '../enums/rating-type.enum';
-import { User } from './user.model';
+import { User, Product } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
 export class Rating extends TimeStamps {
   @prop()
   _id!: number;
+
+  @prop({ required: true, ref: () => Product, type: () => Number })
+  product!: Ref<Product, number>;
 
   @prop({ required: true, ref: () => User, type: () => Number })
   reviewer!: Ref<User, number>;

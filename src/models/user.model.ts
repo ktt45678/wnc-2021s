@@ -1,4 +1,4 @@
-import { prop, plugin, modelOptions, Ref, mongoose } from '@typegoose/typegoose';
+import { prop, plugin, modelOptions, Ref, mongoose, index } from '@typegoose/typegoose';
 import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
 import { AutoIncrementID } from '@typegoose/auto-increment';
 import { Exclude, Expose } from 'class-transformer';
@@ -9,6 +9,11 @@ import { Product, Rating } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
+@index({ fullName: 1 })
+@index({ birthdate: 1 })
+@index({ point: 1 })
+@index({ canSellUntil: 1 })
+@index({ requestUpgrade: 1 })
 export class User extends TimeStamps {
   @prop()
   _id?: number;

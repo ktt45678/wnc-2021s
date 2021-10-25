@@ -20,9 +20,16 @@ export const create = async (createCategoryDto: CreateCategoryDto) => {
 }
 
 export const findAll = async (paginateCategoryDto: PaginateCategoryDto) => {
+  const { page, limit, sort, search, responseType } = paginateCategoryDto;
+  if (responseType === 1) {
+    return categoryModel.aggregate([
+      {
+        $group: { _id: '$name', children: { $push: { name: '$subName', _id: '$_id' } } }
+      }
+    ]).exec();
+  }
   const sortEnum = ['_id', 'name', 'subName', 'createdAt'];
   const fields = { _id: 1, name: 1, subName: 1, createdAt: 1, products: 1 };
-  const { page, limit, sort, search } = paginateCategoryDto;
   const filters: any = search ? {
     $or: [
       { name: { $regex: escapeRegExp(search), $options: 'i' } },
@@ -32,13 +39,6 @@ export const findAll = async (paginateCategoryDto: PaginateCategoryDto) => {
   const aggregation = new MongooseAggregation({ page, limit, filters, fields, sortQuery: sort, sortEnum });
   const [data] = await categoryModel.aggregate(aggregation.build()).exec();
   return data || new Paginated();
-  /*
-  return categoryModel.aggregate([
-    {
-      $group: { _id: '$name', children: { $push: { name: '$subName', _id: '$_id' } } }
-    }
-  ]).exec();
-  */
 }
 
 export const findOne = async (id: number) => {

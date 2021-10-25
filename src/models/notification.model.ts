@@ -15,4 +15,7 @@ export class Notification extends TimeStamps {
 
   @prop({ required: true })
   content!: string;
+
+  @prop({ required: true, default: false })
+  viewed: boolean;
 }

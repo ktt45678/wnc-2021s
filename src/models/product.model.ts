@@ -1,9 +1,8 @@
 import { prop, plugin, modelOptions, Ref, mongoose } from '@typegoose/typegoose';
 import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
 import { AutoIncrementID } from '@typegoose/auto-increment';
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude } from 'class-transformer';
 
-import { UserGroup } from '../enums/user-group.enum';
 import { Bid, Category, User } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
@@ -33,11 +32,21 @@ export class Product extends TimeStamps {
   @prop({ min: 0 })
   buyPrice?: number;
 
+  @Exclude({ toPlainOnly: true })
+  @prop({ required: true, min: 0, default: function () { return this.startingPrice } })
+  currentPrice!: number;
+
+  @prop({ required: true, min: 0, default: function () { return this.startingPrice } })
+  displayPrice!: number;
+
   @prop({ required: true })
   autoRenew!: boolean;
 
   @prop({ required: true, ref: () => User, type: () => Number })
   seller!: Ref<User, number>;
+
+  @prop({ required: true, ref: () => User, type: () => Number })
+  winner!: Ref<User, number>;
 
   @prop({ required: true, type: () => [Bid] })
   bids?: mongoose.Types.Array<Bid>;

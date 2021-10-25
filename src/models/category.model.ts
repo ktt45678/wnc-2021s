@@ -6,7 +6,8 @@ import { Product } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
-@index({ parent: 1 }, { sparse: true })
+@index({ name: 1 })
+@index({ subName: 1 })
 export class Category extends TimeStamps {
   @prop()
   _id!: number;
