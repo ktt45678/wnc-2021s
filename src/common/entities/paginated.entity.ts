@@ -1,4 +1,4 @@
-import { Exclude, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 
 import { IPaginated } from '../interfaces/paginated.interface';
 

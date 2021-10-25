@@ -6,10 +6,12 @@ import { createServer } from 'http';
 import express from 'express';
 import { Server } from 'socket.io';
 import morgan from 'morgan';
+import path from 'path';
+
 import routes from './routing';
 import cors from './middlewares/cors.middleware';
 import socket from './middlewares/socket.middleware';
-import { PORT } from './config';
+import { PORT, STATIC_DIR } from './config';
 
 const app = express();
 const server = createServer(app);
@@ -23,6 +25,9 @@ app.use(morgan('short'));
 // Set up middleware for request parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files
+app.use(STATIC_DIR, express.static(path.join(__dirname, '..', 'public')));
 
 // Load up the routes
 app.use(routes);

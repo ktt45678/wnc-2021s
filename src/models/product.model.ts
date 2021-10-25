@@ -1,12 +1,22 @@
-import { prop, plugin, modelOptions, Ref, mongoose } from '@typegoose/typegoose';
+import { prop, plugin, modelOptions, Ref, mongoose, index } from '@typegoose/typegoose';
 import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
 import { AutoIncrementID } from '@typegoose/auto-increment';
-import { Exclude } from 'class-transformer';
 
 import { Bid, Category, User } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
+@index({ name: 1 })
+@index({ category: 1 })
+@index({ startingPrice: 1 })
+@index({ priceStep: 1 })
+@index({ buyPrice: 1 })
+@index({ autoRenew: 1 })
+@index({ seller: 1 })
+@index({ winner: 1 })
+@index({ bidCount: 1 })
+@index({ expiry: 1 })
+@index({ slug: 'text' })
 export class Product extends TimeStamps {
   @prop()
   _id?: number;
@@ -15,10 +25,13 @@ export class Product extends TimeStamps {
   name!: string;
 
   @prop({ required: true })
+  slug!: string;
+
+  @prop({ required: true })
   description!: string;
 
-  @prop({ required: true, ref: () => Category })
-  category!: Ref<Category>;
+  @prop({ required: true, ref: () => Category, type: () => Number })
+  category!: Ref<Category, number>;
 
   @prop({ type: () => [String], required: true, default: [] })
   images!: string[];
@@ -32,7 +45,6 @@ export class Product extends TimeStamps {
   @prop({ min: 0 })
   buyPrice?: number;
 
-  @Exclude({ toPlainOnly: true })
   @prop({ required: true, min: 0, default: function () { return this.startingPrice } })
   currentPrice!: number;
 
@@ -45,8 +57,11 @@ export class Product extends TimeStamps {
   @prop({ required: true, ref: () => User, type: () => Number })
   seller!: Ref<User, number>;
 
-  @prop({ required: true, ref: () => User, type: () => Number })
-  winner!: Ref<User, number>;
+  @prop({ ref: () => User, type: () => Number })
+  winner?: Ref<User, number>;
+
+  @prop({ required: true, default: 0 })
+  bidCount!: number;
 
   @prop({ required: true, type: () => [Bid] })
   bids?: mongoose.Types.Array<Bid>;

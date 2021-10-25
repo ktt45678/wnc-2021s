@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsBoolean, IsIn, IsNotEmpty, IsOptional, Length, Max, MaxLength, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsDate, IsNotEmpty, IsNumber, IsOptional, Length, Max, MaxLength, Min, MinDate } from 'class-validator';
 
 export class CreateProductDto {
   @Type(() => String)
@@ -14,33 +14,43 @@ export class CreateProductDto {
 
   @Type(() => Number)
   @IsNotEmpty()
+  @IsNumber()
   category: number;
 
   @Type(() => Number)
   @IsNotEmpty()
+  @IsNumber()
   @Min(0)
   @Max(100_000_000_000)
   startingPrice: number;
 
   @Type(() => Number)
   @IsNotEmpty()
+  @IsNumber()
   @Min(0)
   @Max(100_000_000_000)
   priceStep: number;
 
   @Type(() => Number)
   @IsOptional()
+  @IsNumber()
   @Min(0)
   @Max(100_000_000_000)
   buyPrice: number;
 
   @Type(() => Boolean)
+  @IsNotEmpty()
   @IsBoolean()
   autoRenew: boolean;
 
-  @Type(() => Number)
-  @IsNotEmpty()
-  // 5m, 30m, 1h, 12h, 1d, 3d, 5d, 7d
-  @IsIn([300, 1800, 3600, 43200, 86400, 259200, 432000, 604800])
-  duration: number;
+  @Type(() => String)
+  @Transform(({ value }) => {
+    const d = new Date(value);
+    if (d instanceof Date && !isNaN(d.getTime()))
+      return d;
+    return value;
+  }, { toClassOnly: true })
+  @IsDate()
+  @MinDate(new Date())
+  expiry: Date;
 }

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsOptional, Length } from 'class-validator';
+import { IsOptional } from 'class-validator';
 
 import { PaginateDto } from './paginate.dto';
 
