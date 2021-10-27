@@ -38,8 +38,12 @@ export const findAll = async (paginateProductDto: PaginateProductDto) => {
     _id: 1, name: 1, category: 1, images: 1, startingPrice: 1, priceStep: 1, buyPrice: 1, currentPrice: 1, autoRenew: 1, seller: 1,
     winner: 1, bidCount: 1, expiry: 1
   };
-  const { page, limit, sort, search } = paginateProductDto;
-  const filters: any = {};
+  const { page, limit, sort, search, category, ended, seller, winner } = paginateProductDto;
+  const filters: any = { deleted: false };
+  category != undefined && (filters.category = category);
+  ended != undefined && (filters.expiry = { $lt: new Date() });
+  seller != undefined && (filters.seller = seller);
+  winner != undefined && (filters.winner = winner);
   const aggregation = new MongooseAggregation({ page, limit, filters, fields, sortQuery: sort, search, sortEnum, fullTextSearch: true });
   const [data] = await productModel.aggregate(aggregation.build()).exec();
   if (data) {

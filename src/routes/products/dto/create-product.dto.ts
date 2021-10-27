@@ -27,7 +27,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNotEmpty()
   @IsNumber()
-  @Min(0)
+  @Min(1000)
   @Max(100_000_000_000)
   priceStep: number;
 
