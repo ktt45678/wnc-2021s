@@ -4,6 +4,6 @@
  * @param roles {string[]} whitelisted roles
  */
 export class AuthGuardOptions {
-  allowGuest: boolean;
+  allowGuest?: boolean;
   roles?: string[];
 }

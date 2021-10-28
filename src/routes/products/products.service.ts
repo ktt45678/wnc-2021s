@@ -5,10 +5,12 @@ import { plainToClassFromExist } from 'class-transformer';
 import { productModel, categoryModel, Product } from '../../models';
 import { CreateProductDto } from './dto/create-product.dto';
 import { PaginateProductDto } from './dto/paginate-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { HttpException } from '../../common/exceptions/http.exception';
 import { AuthUser } from '../auth/entities/auth-user.entity';
 import { MulterFile } from '../../common/interfaces/multer-file.interface';
 import { LookupOptions, MongooseAggregation } from '../../utils/mongo-aggregation.util';
+import { maskString } from '../../utils/string-helper.util';
 import { STATIC_DIR, STATIC_URL } from '../../config';
 import { Paginated } from '../../common/entities/paginated.entity';
 
@@ -59,12 +61,64 @@ export const findAll = async (paginateProductDto: PaginateProductDto) => {
   const [data] = await productModel.aggregate(aggregation.buildLookup(lookups)).exec();
   if (data) {
     for (let i = 0; i < data.results.length; i++) {
-      if (data.results[i].images.length) {
-        for (let j = 0; j < data.results[i].images.length; j++) {
-          data.results[i].images[j] = `${STATIC_URL}${STATIC_DIR}/${data.results[i].images[j]}`;
-        }
+      for (let j = 0; j < data.results[i].images.length; j++) {
+        data.results[i].images[j] = `${STATIC_URL}${STATIC_DIR}/${data.results[i].images[j]}`;
       }
+      if (data.results[i].winner) {
+        data.results[i].winner.fullName = maskString(data.results[i].winner.fullName);
+      }
+      data.results[i].seller.fullName = maskString(data.results[i].seller.fullName);
     }
   }
   return data || new Paginated();
+}
+
+export const findOne = async (id: number) => {
+  const product = await productModel.findOne({ $and: [{ _id: id }, { deleted: false }] }, {
+    _id: 1, name: 1, description: 1, category: 1, images: 1, startingPrice: 1, priceStep: 1, buyPrice: 1, displayPrice: 1, autoRenew: 1,
+    bids: 1, seller: 1, winner: 1, bidCount: 1, expiry: 1, createdAt: 1, updatedAt: 1
+  }).populate([
+    { path: 'category', select: { _id: 1, name: 1, subName: 1 } },
+    { path: 'seller', select: { _id: 1, fullName: 1 } },
+    { path: 'winner', select: { _id: 1, fullName: 1 } }
+  ]).lean().exec();
+  if (!product)
+    throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
+  for (let i = 0; i < product.images.length; i++) {
+    product.images[i] = `${STATIC_URL}${STATIC_DIR}/${product.images[i]}`;
+  }
+  product.winner && ((<any>product.winner).fullName = maskString((<any>product.winner).fullName));
+  return product;
+}
+
+export const update = async (id: number, updateProductDto: UpdateProductDto, authUser: AuthUser) => {
+  const product = await productModel.findOne({ $and: [{ _id: id }, { deleted: false }] }, {
+    _id: 1, name: 1, description: 1, category: 1, images: 1, startingPrice: 1, priceStep: 1, buyPrice: 1, displayPrice: 1, autoRenew: 1,
+    bids: 1, seller: 1, winner: 1, bidCount: 1, expiry: 1, createdAt: 1, updatedAt: 1
+  }).populate([
+    { path: 'category', select: { _id: 1, name: 1, subName: 1 } },
+    { path: 'seller', select: { _id: 1, fullName: 1 } },
+    { path: 'winner', select: { _id: 1, fullName: 1 } }
+  ]).exec();
+  if (!product)
+    throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
+  if ((<any>product.seller)._id !== authUser._id)
+    throw new HttpException({ status: 403, message: 'Bạn không có quyền cập nhật sản phẩm này' });
+  product.description += '<br />' + updateProductDto.description;
+  const updatedProduct = (await product.save()).toObject();
+  for (let i = 0; i < updatedProduct.images.length; i++) {
+    updatedProduct.images[i] = `${STATIC_URL}${STATIC_DIR}/${updatedProduct.images[i]}`;
+  }
+  updatedProduct.winner && ((<any>updatedProduct.winner).fullName = maskString((<any>updatedProduct.winner).fullName));
+  return updatedProduct;
+}
+
+export const remove = async (id: number) => {
+  const session = await startSession();
+  await session.withTransaction(async () => {
+    const product = await productModel.findOneAndUpdate({ $and: [{ _id: id }, { deleted: false }] }, { deleted: true }, { session }).lean();
+    if (!product)
+      throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
+    await categoryModel.updateOne({ _id: <any>product.category }, { $pull: product._id }, { session });
+  });
 }

@@ -6,15 +6,16 @@ import { ParsedQs } from 'qs';
 import { validateBody, validateQuery } from '../../middlewares/validator.middleware';
 import authGuardMiddleware from '../../middlewares/auth-guard.middleware';
 import { upload } from '../../middlewares/multer.middleware';
-import classSerializer from '../../middlewares/class-serializer.middleware';
 import { CreateProductDto } from './dto/create-product.dto';
 import { PaginateProductDto } from './dto/paginate-product.dto';
 import * as productService from './products.service';
 import { HttpException } from '../../common/exceptions/http.exception';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { Role } from '../../enums/role.enum';
 
 const router: Router = Router();
 
-router.post('/', authGuardMiddleware(), async (req: Request<any, any, CreateProductDto>, res: Response, next: NextFunction) => {
+router.post('/', authGuardMiddleware({ roles: [Role.SELLER] }), async (req: Request<any, any, CreateProductDto>, res: Response, next: NextFunction) => {
   try {
     upload.array('images', 20)(req, res, async (err: any) => {
       if (err)
@@ -42,6 +43,33 @@ router.get('/', validateQuery(PaginateProductDto), async (req: Request<any, any,
   try {
     const result = await productService.findAll(req.query);
     res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await productService.findOne(+req.params.id || 0);
+    res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.patch('/:id', authGuardMiddleware(), validateBody(UpdateProductDto), async (req: Request<any, any, UpdateProductDto>, res: Response, next: NextFunction) => {
+  try {
+    const result = await productService.update(+req.params.id || 0, req.body, req.user);
+    res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete('/:id', authGuardMiddleware({ roles: [Role.ADMIN] }), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await productService.remove(+req.params.id || 0);
+    res.status(204).send();
   } catch (e) {
     next(e);
   }

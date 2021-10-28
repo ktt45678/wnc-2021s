@@ -6,10 +6,12 @@ import { ParsedQs } from 'qs';
 import * as categoryService from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { PaginateCategoryDto } from './dto/paginate-category.dto';
+import authGuardMiddleware from '../../middlewares/auth-guard.middleware';
+import { Role } from '../../enums/role.enum';
 
 const router: Router = Router();
 
-router.post('/', validateBody(CreateCategoryDto), async (req: Request<any, any, CreateCategoryDto>, res: Response, next: NextFunction) => {
+router.post('/', authGuardMiddleware({ roles: [Role.ADMIN] }), validateBody(CreateCategoryDto), async (req: Request<any, any, CreateCategoryDto>, res: Response, next: NextFunction) => {
   try {
     const result = await categoryService.create(req.body);
     res.status(200).send(result);
@@ -29,26 +31,26 @@ router.get('/', validateQuery(PaginateCategoryDto), async (req: Request<any, any
 
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.findOne(+req.params.id);
+    const result = await categoryService.findOne(+req.params.id || 0);
     res.status(200).send(result);
   } catch (e) {
     next(e);
   }
 });
 
-router.patch('/:id', validateBody(CreateCategoryDto), async (req: Request<any, any, CreateCategoryDto>, res: Response, next: NextFunction) => {
+router.patch('/:id', authGuardMiddleware({ roles: [Role.ADMIN] }), validateBody(CreateCategoryDto), async (req: Request<any, any, CreateCategoryDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.update(+req.params.id, req.body);
+    const result = await categoryService.update(+req.params.id || 0, req.body);
     res.status(200).send(result);
   } catch (e) {
     next(e);
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', authGuardMiddleware({ roles: [Role.ADMIN] }), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.remove(+req.params.id);
-    res.status(200).send(result);
+    await categoryService.remove(+req.params.id || 0);
+    res.status(204).send();
   } catch (e) {
     next(e);
   }
