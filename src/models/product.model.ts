@@ -66,6 +66,9 @@ export class Product extends TimeStamps {
   @prop({ required: true, type: () => [Bid] })
   bids?: mongoose.Types.Array<Bid>;
 
+  @prop({ required: true, ref: () => User, type: () => Number })
+  blacklist?: mongoose.Types.Array<Ref<User, number>>;
+
   @prop({ required: true, default: false })
   deleted?: boolean;
 

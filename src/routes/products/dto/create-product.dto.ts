@@ -38,7 +38,9 @@ export class CreateProductDto {
   @Max(100_000_000_000)
   buyPrice: number;
 
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    return [true, 'enabled', 'true'].indexOf(value) > -1;
+  })
   @IsNotEmpty()
   @IsBoolean()
   autoRenew: boolean;
