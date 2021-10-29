@@ -23,9 +23,8 @@ export const findAll = async (paginateCategoryDto: PaginateCategoryDto) => {
   const { page, limit, sort, search, responseType } = paginateCategoryDto;
   if (responseType === 1) {
     return categoryModel.aggregate([
-      {
-        $group: { _id: '$name', children: { $push: { name: '$subName', _id: '$_id' } } }
-      }
+      { $group: { _id: '$name', children: { $push: { name: '$subName', _id: '$_id', products: '$products' } } } },
+      { $sort: { _id: 1 } }
     ]).exec();
   }
   const sortEnum = ['_id', 'name', 'subName', 'createdAt'];

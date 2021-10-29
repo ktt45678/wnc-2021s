@@ -17,7 +17,7 @@ const router: Router = Router();
 
 router.post('/', authGuardMiddleware({ roles: [Role.SELLER] }), async (req: Request<any, any, CreateProductDto>, res: Response, next: NextFunction) => {
   try {
-    upload.array('images', 20)(req, res, async (err: any) => {
+    upload.array('images', 30)(req, res, async (err: any) => {
       if (err)
         return next(new HttpException({ status: 415, message: err.message }));
       req.body = plainToClass(CreateProductDto, req.body);

@@ -9,7 +9,7 @@ export class CreateProductDto {
 
   @Type(() => String)
   @IsNotEmpty()
-  @Length(10, 10000)
+  @Length(10, 100000)
   description: string;
 
   @Type(() => Number)
@@ -20,21 +20,21 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsNotEmpty()
   @IsNumber()
-  @Min(0)
+  @Min(1_000)
   @Max(100_000_000_000)
   startingPrice: number;
 
   @Type(() => Number)
   @IsNotEmpty()
   @IsNumber()
-  @Min(1000)
+  @Min(1_000)
   @Max(100_000_000_000)
   priceStep: number;
 
   @Type(() => Number)
   @IsOptional()
   @IsNumber()
-  @Min(0)
+  @Min(1_000)
   @Max(100_000_000_000)
   buyPrice: number;
 

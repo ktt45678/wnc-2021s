@@ -1,6 +1,5 @@
 import { Document, startSession } from 'mongoose';
 import slugify from 'slugify';
-import { plainToClassFromExist } from 'class-transformer';
 
 import { productModel, categoryModel, Product } from '../../models';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -67,7 +66,6 @@ export const findAll = async (paginateProductDto: PaginateProductDto) => {
       if (data.results[i].winner) {
         data.results[i].winner.fullName = maskString(data.results[i].winner.fullName);
       }
-      data.results[i].seller.fullName = maskString(data.results[i].seller.fullName);
     }
   }
   return data || new Paginated();
