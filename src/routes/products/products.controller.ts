@@ -12,6 +12,9 @@ import * as productService from './products.service';
 import { HttpException } from '../../common/exceptions/http.exception';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Role } from '../../enums/role.enum';
+import { BidProductDto } from './dto/bid-product.dto';
+import { ApproveBidDto } from './dto/approve-bid.dto';
+import { DenyBidDto } from './dto/deny-bid.dto';
 
 const router: Router = Router();
 
@@ -59,7 +62,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
 router.patch('/:id', authGuardMiddleware(), validateBody(UpdateProductDto), async (req: Request<any, any, UpdateProductDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await productService.update(+req.params.id || 0, req.body, req.user);
+    const result = await productService.update(+req.params.id || 0, req.body, req.user, res.io);
     res.status(200).send(result);
   } catch (e) {
     next(e);
@@ -68,7 +71,52 @@ router.patch('/:id', authGuardMiddleware(), validateBody(UpdateProductDto), asyn
 
 router.delete('/:id', authGuardMiddleware({ roles: [Role.ADMIN] }), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await productService.remove(+req.params.id || 0);
+    await productService.remove(+req.params.id || 0, res.io);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/:id/bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), validateBody(BidProductDto), async (req: Request<any, any, BidProductDto>, res: Response, next: NextFunction) => {
+  try {
+    const result = await productService.createBid(+req.params.id || 0, req.body, req.user, res.io);
+    res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/:id/bid', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await productService.bidHint(+req.params.id || 0);
+    res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/:id/request-bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await productService.requestBid(+req.params.id || 0, req.user, res.io);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/:id/approve-bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), validateBody(ApproveBidDto), async (req: Request<any, any, ApproveBidDto>, res: Response, next: NextFunction) => {
+  try {
+    await productService.approveBid(+req.params.id || 0, req.body, req.user, res.io);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/:id/deny-bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), validateBody(DenyBidDto), async (req: Request<any, any, DenyBidDto>, res: Response, next: NextFunction) => {
+  try {
+    await productService.denyBid(+req.params.id || 0, req.body, req.user, res.io);
     res.status(204).send();
   } catch (e) {
     next(e);

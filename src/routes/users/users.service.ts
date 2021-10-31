@@ -8,6 +8,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { MongooseAggregation } from '../../utils/mongo-aggregation.util';
 import { escapeRegExp } from '../../utils/string-helper.util';
 import { Paginated } from '../../common/entities/paginated.entity';
+import { AuthUser } from '../auth/entities/auth-user.entity';
 
 export const findAll = async (paginateUserDto: PaginateUserDto) => {
   const sortEnum = ['_id', 'email', 'fullName', 'birthdate', 'point', 'role'];
@@ -20,8 +21,15 @@ export const findAll = async (paginateUserDto: PaginateUserDto) => {
   return data || new Paginated();
 }
 
-export const findOne = async (id: number) => {
-
+export const findOne = async (id: number, authUser: AuthUser) => {
+  if (id === 0 && !authUser.isGuest)
+    id = authUser._id;
+  const user = await userModel.findById(id, {
+    _id: 1, email: 1, fullName: 1, birthdate: 1, address: 1, role: 1, point: 1, ratings: 1, requestUpgrade: 1, canSellUntil: 1
+  }).populate('ratings').lean().exec();
+  if (!user)
+    throw new HttpException({ status: 404, message: 'User not found' });
+  return user;
 }
 
 export const update = async (id: number, updateUserDto: UpdateUserDto) => {

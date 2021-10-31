@@ -15,14 +15,20 @@ export class Rating extends TimeStamps {
   product!: Ref<Product, number>;
 
   @prop({ required: true, ref: () => User, type: () => Number })
-  reviewer!: Ref<User, number>;
+  seller!: Ref<User, number>;
 
   @prop({ required: true, ref: () => User, type: () => Number })
-  user!: Ref<User, number>;
+  bidder!: Ref<User, number>;
 
   @prop({ enum: [RatingType.NEGATIVE, RatingType.POSITIVE] })
-  type!: string;
+  sellerRating!: string;
 
   @prop({ required: true })
-  comment!: string;
+  sellerComment!: string;
+
+  @prop({ enum: [RatingType.NEGATIVE, RatingType.POSITIVE] })
+  bidderRating!: string;
+
+  @prop({ required: true })
+  bidderComment!: string;
 }

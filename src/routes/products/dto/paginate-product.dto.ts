@@ -25,4 +25,9 @@ export class PaginateProductDto extends PaginateDto {
   @IsOptional()
   @IsNumber()
   winner: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  except: number;
 }

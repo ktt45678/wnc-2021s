@@ -9,13 +9,23 @@ import morgan from 'morgan';
 import path from 'path';
 
 import routes from './routing';
+import initSocket from './socket';
+import initCron from './cron';
 import cors from './middlewares/cors.middleware';
 import socket from './middlewares/socket.middleware';
 import { PORT, STATIC_DIR } from './config';
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  },
+  transports: ['websocket']
+});
+initSocket(io);
+initCron(io);
 
 // Set up middleware
 app.use(cors);

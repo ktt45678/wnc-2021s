@@ -15,8 +15,9 @@ import { Bid, Category, User } from '.';
 @index({ seller: 1 })
 @index({ winner: 1 })
 @index({ bidCount: 1 })
+@index({ ended: 1 })
 @index({ expiry: 1 })
-@index({ slug: 'text' })
+@index({ name: 'text', slug: 'text' })
 export class Product extends TimeStamps {
   @prop()
   _id?: number;
@@ -63,14 +64,20 @@ export class Product extends TimeStamps {
   @prop({ required: true, default: 0 })
   bidCount!: number;
 
-  @prop({ required: true, type: () => [Bid] })
-  bids?: mongoose.Types.Array<Bid>;
+  @prop({ required: true, ref: () => Bid, type: () => Number })
+  bids?: mongoose.Types.Array<Ref<Bid, number>>;
 
   @prop({ required: true, ref: () => User, type: () => Number })
   blacklist?: mongoose.Types.Array<Ref<User, number>>;
 
+  @prop({ required: true, ref: () => User, type: () => Number })
+  whitelist?: mongoose.Types.Array<Ref<User, number>>;
+
+  @prop({ required: true, ref: () => User, type: () => Number })
+  requestedUsers?: mongoose.Types.Array<Ref<User, number>>;
+
   @prop({ required: true, default: false })
-  deleted?: boolean;
+  ended?: boolean;
 
   @prop({ required: true })
   expiry!: Date;

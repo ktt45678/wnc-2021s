@@ -4,6 +4,7 @@ import { validateBody, validateQuery } from '../../middlewares/validator.middlew
 import { ParsedQs } from 'qs';
 
 import * as categoryService from './users.service';
+import authGuardMiddleware from '../../middlewares/auth-guard.middleware';
 import { PaginateUserDto } from './dto/paginate-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -18,9 +19,9 @@ router.get('/', validateQuery(PaginateUserDto), async (req: Request<any, any, an
   }
 });
 
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', authGuardMiddleware({ allowGuest: true }), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.findOne(+req.params.id);
+    const result = await categoryService.findOne(+req.params.id || 0, req.user);
     res.status(200).send(result);
   } catch (e) {
     next(e);
@@ -29,7 +30,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
 router.patch('/:id', validateBody(UpdateUserDto), async (req: Request<any, any, UpdateUserDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.update(+req.params.id, req.body);
+    const result = await categoryService.update(+req.params.id || 0, req.body);
     res.status(200).send(result);
   } catch (e) {
     next(e);
@@ -38,7 +39,7 @@ router.patch('/:id', validateBody(UpdateUserDto), async (req: Request<any, any, 
 
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.remove(+req.params.id);
+    const result = await categoryService.remove(+req.params.id || 0);
     res.status(200).send(result);
   } catch (e) {
     next(e);
