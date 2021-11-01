@@ -1,4 +1,4 @@
-import { prop, plugin, modelOptions, Ref } from '@typegoose/typegoose';
+import { prop, plugin, modelOptions, Ref, index } from '@typegoose/typegoose';
 import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
 import { AutoIncrementID } from '@typegoose/auto-increment';
 
@@ -7,6 +7,8 @@ import { Product, User } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
+@index({ product: 1, bidder: 1 })
+@index({ product: 1, status: 1, price: -1 })
 export class Bid extends TimeStamps {
   @prop()
   _id?: number;

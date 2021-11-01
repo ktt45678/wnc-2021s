@@ -3,13 +3,14 @@ import slugify from 'slugify';
 import { Server } from 'socket.io';
 import { BeAnObject, IObjectWithTypegooseFunction } from '@typegoose/typegoose/lib/types';
 
-import { productModel, categoryModel, Product, bidModel, userModel, Bid, User } from '../../models';
+import { productModel, categoryModel, Product, bidModel, userModel, Bid, User, ratingModel } from '../../models';
 import { CreateProductDto } from './dto/create-product.dto';
 import { PaginateProductDto } from './dto/paginate-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { BidProductDto } from './dto/bid-product.dto';
 import { ApproveBidDto } from './dto/approve-bid.dto';
 import { DenyBidDto } from './dto/deny-bid.dto';
+import { CreateRatingDto } from './dto/create-rating.dto';
 import { HttpException } from '../../common/exceptions/http.exception';
 import { AuthUser } from '../auth/entities/auth-user.entity';
 import { MulterFile } from '../../common/interfaces/multer-file.interface';
@@ -20,6 +21,7 @@ import { BidStatus } from '../../enums/bid-status.enum';
 import { IoRoom } from '../../enums/io-room.enum';
 import { IoEvent } from '../../enums/io-event.enum';
 import { SIBTemplate } from '../../enums/sendinblue-template.enum';
+import { RatingType } from '../../enums/rating-type.enum';
 import { sendEmailSIB } from '../../modules/email.module';
 import { STATIC_DIR, STATIC_URL, WEBSITE_URL } from '../../config';
 
@@ -76,7 +78,7 @@ export const findAll = async (paginateProductDto: PaginateProductDto) => {
   return data || new Paginated();
 }
 
-export const findOne = async (id: number) => {
+export const findOne = async (id: number, authUser: AuthUser) => {
   const product = await productModel.findById(id, {
     _id: 1, name: 1, description: 1, category: 1, images: 1, startingPrice: 1, priceStep: 1, buyPrice: 1, displayPrice: 1, autoRenew: 1,
     bids: 1, seller: 1, winner: 1, bidCount: 1, blacklist: 1, whitelist: 1, requestedUsers: 1, ended: 1, expiry: 1, createdAt: 1, updatedAt: 1
@@ -91,7 +93,9 @@ export const findOne = async (id: number) => {
       path: 'bids', select: { _id: 1, bidder: 1, price: 1 },
       options: { sort: { price: -1 } },
       populate: { path: 'bidder', select: { _id: 1, fullName: 1, point: 1 } }
-    }
+    },
+    { path: 'sellerRating', select: { _id: 1, type: 1, comment: 1, createdAt: 1 } },
+    { path: 'winnerRating', select: { _id: 1, type: 1, comment: 1, createdAt: 1 } }
   ]).lean().exec();
   if (!product)
     throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
@@ -100,6 +104,18 @@ export const findOne = async (id: number) => {
       (<Bid>product.bids[i]).price = undefined;
     else
       (<User>(<Bid>product.bids[i]).bidder).fullName = maskString((<User>(<Bid>product.bids[i]).bidder).fullName);
+  }
+  if (authUser.isGuest || (<User>product.seller)._id !== authUser._id) {
+    if (!authUser.isGuest) {
+      (<any>product).blacklisted = (<User[]>product.blacklist).findIndex(u => u._id === authUser._id) > -1;
+      (<any>product).whitelisted = (<User[]>product.whitelist).findIndex(u => u._id === authUser._id) > -1;
+      (<any>product).requestedUser = (<User[]>product.requestedUsers).findIndex(u => u._id === authUser._id) > -1;
+    }
+    product.blacklist = undefined;
+    product.whitelist = undefined;
+    product.requestedUsers = undefined;
+    if (!product.ended)
+      product.bids = undefined;
   }
   product.images = transformImages(product.images);
   return product;
@@ -128,16 +144,16 @@ export const update = async (id: number, updateProductDto: UpdateProductDto, aut
     throw new HttpException({ status: 403, message: 'Bạn không có quyền cập nhật sản phẩm này' });
   product.description += '<br />' + updateProductDto.description;
   await product.save();
-  const updatedProduct = product.toObject();
-  for (let i = 0; i < updatedProduct.bids.length; i++) {
-    if (!updatedProduct.ended)
-      (<Bid>updatedProduct.bids[i]).price = undefined;
-    else
-      (<User>(<Bid>updatedProduct.bids[i]).bidder).fullName = maskString((<User>(<Bid>updatedProduct.bids[i]).bidder).fullName);
-  }
-  updatedProduct.images = transformImages(updatedProduct.images);
-  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH, updatedProduct);
-  return updatedProduct;
+  //const updatedProduct = product.toObject();
+  //for (let i = 0; i < updatedProduct.bids.length; i++) {
+  //  if (!updatedProduct.ended)
+  //    (<Bid>updatedProduct.bids[i]).price = undefined;
+  //  else
+  //    (<User>(<Bid>updatedProduct.bids[i]).bidder).fullName = maskString((<User>(<Bid>updatedProduct.bids[i]).bidder).fullName);
+  //}
+  //updatedProduct.images = transformImages(updatedProduct.images);
+  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
+  //return updatedProduct;
 }
 
 export const remove = async (id: number, io: Server) => {
@@ -291,17 +307,20 @@ export const createBid = async (id: number, bidProductDto: BidProductDto, authUs
   //    receivers.push(`${IoRoom.USER}:${(<User>(<Bid>product.bids[i]).bidder)._id}`);
   io.in(receivers).emit(IoEvent.NOTIFICATION_PRODUCTS, {
     content: `${user.fullName} đã ra giá ${priceString} cho sản phẩm ${product.name}`,
-    product: id
+    product: id,
+    createdAt: new Date()
   });
-  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH, product.toObject());
+  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
   if (buyPriceBidded) {
     io.in(`${IoRoom.USER}:${(<User>product.seller)._id}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
       content: `Kết thúc phiên đấu giá cho sản phẩm ${product.name}`,
-      product: product._id
+      product: product._id,
+      createdAt: new Date()
     });
     io.in(`${IoRoom.USER}:${(<User>product.winner)._id}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
       content: `Bạn đã chiến thắng trong phiên đấu giá sản phẩm ${product.name}`,
-      product: product._id
+      product: product._id,
+      createdAt: new Date()
     });
   }
   return product.toObject();
@@ -356,10 +375,11 @@ export const requestBid = async (id: number, authUser: AuthUser, io: Server) => 
       (<User>(<Bid>product.bids[i]).bidder).fullName = maskString((<User>(<Bid>product.bids[i]).bidder).fullName);
   }
   product.images = transformImages(product.images);
-  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH, product.toObject());
+  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
   io.in(`${IoRoom.USER}:${(<User>product.seller)._id}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
     content: `${user.fullName} đang yêu cầu để ra giá sản phẩm ${product.name}`,
-    product: id
+    product: id,
+    createdAt: new Date()
   });
 }
 
@@ -399,10 +419,11 @@ export const approveBid = async (id: number, approveBidDto: ApproveBidDto, authU
       (<User>(<Bid>product.bids[i]).bidder).fullName = maskString((<User>(<Bid>product.bids[i]).bidder).fullName);
   }
   product.images = transformImages(product.images);
-  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH, product.toObject());
+  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
   io.in(`${IoRoom.USER}:${approveBidDto.user}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
     content: `Bạn đã ${approveBidDto.accept ? 'được cho phép' : 'bị từ chối'} tham gia ra giá cho sản phẩm ${product.name}`,
-    product: id
+    product: id,
+    createdAt: new Date()
   });
 }
 
@@ -441,6 +462,7 @@ export const denyBid = async (id: number, denyBidDto: DenyBidDto, authUser: Auth
     }
     await product.save({ session });
   });
+  /*
   await product.populate([
     { path: 'category', select: { _id: 1, name: 1, subName: 1 } },
     { path: 'seller', select: { _id: 1, fullName: 1, point: 1 } },
@@ -461,10 +483,17 @@ export const denyBid = async (id: number, denyBidDto: DenyBidDto, authUser: Auth
       (<User>(<Bid>product.bids[i]).bidder).fullName = maskString((<User>(<Bid>product.bids[i]).bidder).fullName);
   }
   product.images = transformImages(product.images);
-  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH, product.toObject());
+  */
+  await sendEmailSIB(user.email, user.fullName, SIBTemplate.NO_BID, {
+    recipient_name: user.fullName,
+    product_name: product.name,
+    button_url: `${WEBSITE_URL}/home/products/${product._id}`
+  });
+  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
   io.in(`${IoRoom.USER}:${denyBidDto.user}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
     content: `Bạn đã bị người bán từ chối lượt ra giá cho sản phẩm ${product.name}`,
-    product: id
+    product: id,
+    createdAt: new Date()
   });
 }
 
@@ -509,7 +538,7 @@ export const handleAuctionsEnd = async (io: Server) => {
         recipient_name: (<User>products[i].seller).fullName,
         product_name: products[i].name,
         button_url: `${WEBSITE_URL}/home/products/${products[i]._id}`
-      })
+      });
     }
     await products[i].save();
     for (let j = 0; j < products[i].bids.length; j++) {
@@ -521,16 +550,76 @@ export const handleAuctionsEnd = async (io: Server) => {
     (<User>products[i].seller).email = undefined;
     (<User>products[i].winner).email = undefined;
     products[i].images = transformImages(products[i].images);
-    io.in(`${IoRoom.PRODUCT_VIEW}:${products[i]._id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH, products[i].toObject());
+    io.in(`${IoRoom.PRODUCT_VIEW}:${products[i]._id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
     io.in(`${IoRoom.USER}:${(<User>products[i].seller)._id}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
       content: `Kết thúc phiên đấu giá cho sản phẩm ${products[i].name}`,
-      product: products[i]._id
+      product: products[i]._id,
+      createdAt: new Date()
     });
     io.in(`${IoRoom.USER}:${(<User>products[i].winner)._id}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
       content: `Bạn đã chiến thắng trong phiên đấu giá sản phẩm ${products[i].name}`,
-      product: products[i]._id
+      product: products[i]._id,
+      createdAt: new Date()
     });
   }
+}
+
+export const createProductRating = async (id: number, createRatingDto: CreateRatingDto, authUser: AuthUser, io: Server) => {
+  const product = await productModel.findById(id).exec();
+  if (!product)
+    throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
+  if (!product.ended)
+    throw new HttpException({ status: 400, message: 'Sản phẩm chưa kết thúc, không thể đánh giá' });
+  if (!product.winner)
+    throw new HttpException({ status: 400, message: 'Không thể đánhg giá sản phẩm không có người mua' });
+  if (product.winner !== authUser._id && product.seller !== authUser._id)
+    throw new HttpException({ status: 400, message: 'Bạn không thể tham gia đánh giá trên sản phẩm này' });
+  const checkRating = await ratingModel.findOne({ $and: [{ product: id }, { user: authUser._id }] }).lean().exec();
+  if (checkRating)
+    throw new HttpException({ status: 422, message: 'Bạn đã đánh giá người dùng này rồi' });
+  const session = await startSession();
+  await session.withTransaction(async () => {
+    const rating = new ratingModel({
+      product: id,
+      user: authUser._id,
+      type: createRatingDto.ratingType,
+      comment: createRatingDto.comment
+    });
+    const targetUser: number = product.winner === authUser._id ? <number>product.seller : <number>product.winner;
+    rating.target = targetUser;
+    await rating.save({ session });
+    if (product.winner === authUser._id)
+      product.sellerRating = rating._id;
+    else
+      product.winnerRating = rating._id;
+    await product.save({ session });
+    const [positiveCount, negativeCount] = await Promise.all([
+      ratingModel.countDocuments({
+        $and: [
+          { target: targetUser },
+          { type: RatingType.POSITIVE }
+        ]
+      }).session(session),
+      ratingModel.countDocuments({
+        $and: [
+          { target: targetUser },
+          { type: RatingType.NEGATIVE }
+        ]
+      }).session(session)
+    ]);
+    const point = Math.round((positiveCount / (positiveCount + negativeCount)) * 100);
+    await userModel.updateOne({ _id: targetUser }, { point }, { session });
+  });
+  io.in(`${IoRoom.PRODUCT_VIEW}:${product._id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
+}
+
+export const findProductRating = (id: number) => {
+  return ratingModel.findOne({ product: id }, {
+    _id: 1, seller: 1, bidder: 1, sellerRating: 1, sellerComment: 1, bidderRating: 1, bidderComment: 1
+  }).populate([
+    { path: 'bidder', select: { _id: 1, fullName: 1, point: 1 } },
+    { path: 'seller', select: { _id: 1, fullName: 1, point: 1 } }
+  ]).lean().exec();
 }
 
 const emitRefreshProduct = async (product: Document<any, BeAnObject, any> & Product & IObjectWithTypegooseFunction & { _id: any; }, io: Server) => {
@@ -555,7 +644,7 @@ const emitRefreshProduct = async (product: Document<any, BeAnObject, any> & Prod
   }
   product.currentPrice && (product.currentPrice = undefined);
   product.images = transformImages(product.images);
-  io.in(`${IoRoom.PRODUCT_VIEW}:${product._id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH, product.toObject());
+  io.in(`${IoRoom.PRODUCT_VIEW}:${product._id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
 }
 
 const transformImages = (images: string[]) => {

@@ -15,6 +15,7 @@ import { Role } from '../../enums/role.enum';
 import { BidProductDto } from './dto/bid-product.dto';
 import { ApproveBidDto } from './dto/approve-bid.dto';
 import { DenyBidDto } from './dto/deny-bid.dto';
+import { CreateRatingDto } from './dto/create-rating.dto';
 
 const router: Router = Router();
 
@@ -51,9 +52,9 @@ router.get('/', validateQuery(PaginateProductDto), async (req: Request<any, any,
   }
 });
 
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', authGuardMiddleware({ allowGuest: true }), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await productService.findOne(+req.params.id || 0);
+    const result = await productService.findOne(+req.params.id || 0, req.user);
     res.status(200).send(result);
   } catch (e) {
     next(e);
@@ -62,8 +63,8 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 
 router.patch('/:id', authGuardMiddleware(), validateBody(UpdateProductDto), async (req: Request<any, any, UpdateProductDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await productService.update(+req.params.id || 0, req.body, req.user, res.io);
-    res.status(200).send(result);
+    await productService.update(+req.params.id || 0, req.body, req.user, res.io);
+    res.status(204).send();
   } catch (e) {
     next(e);
   }
@@ -80,8 +81,8 @@ router.delete('/:id', authGuardMiddleware({ roles: [Role.ADMIN] }), async (req: 
 
 router.post('/:id/bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), validateBody(BidProductDto), async (req: Request<any, any, BidProductDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await productService.createBid(+req.params.id || 0, req.body, req.user, res.io);
-    res.status(200).send(result);
+    await productService.createBid(+req.params.id || 0, req.body, req.user, res.io);
+    res.status(204).send();
   } catch (e) {
     next(e);
   }
@@ -118,6 +119,26 @@ router.post('/:id/deny-bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SEL
   try {
     await productService.denyBid(+req.params.id || 0, req.body, req.user, res.io);
     res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/:id/rating', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), validateBody(CreateRatingDto), async (req: Request<any, any, CreateRatingDto>, res: Response, next: NextFunction) => {
+  try {
+    await productService.createProductRating(+req.params.id || 0, req.body, req.user, res.io);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.get('/:id/rating', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await productService.findProductRating(+req.params.id || 0);
+    if (!result)
+      return res.status(204).send();
+    res.status(200).send(result);
   } catch (e) {
     next(e);
   }

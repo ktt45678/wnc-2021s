@@ -2,7 +2,7 @@ import { prop, plugin, modelOptions, Ref, mongoose, index } from '@typegoose/typ
 import { TimeStamps } from '@typegoose/typegoose/lib/defaultClasses';
 import { AutoIncrementID } from '@typegoose/auto-increment';
 
-import { Bid, Category, User } from '.';
+import { Bid, Category, Rating, User } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
@@ -75,6 +75,12 @@ export class Product extends TimeStamps {
 
   @prop({ required: true, ref: () => User, type: () => Number })
   requestedUsers?: mongoose.Types.Array<Ref<User, number>>;
+
+  @prop({ ref: () => Rating, type: () => Number })
+  sellerRating?: Ref<Rating, number>;
+
+  @prop({ ref: () => Rating, type: () => Number })
+  winnerRating?: Ref<Rating, number>;
 
   @prop({ required: true, default: false })
   ended?: boolean;

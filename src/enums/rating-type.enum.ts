@@ -1,5 +1,4 @@
 export enum RatingType {
-  DELETE = 'delete',
-  POSITIVE = 'positive',
-  NEGATIVE = 'negative'
+  POSITIVE = 1,
+  NEGATIVE = -1
 }
