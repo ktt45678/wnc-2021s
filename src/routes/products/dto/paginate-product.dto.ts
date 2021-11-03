@@ -19,12 +19,28 @@ export class PaginateProductDto extends PaginateDto {
   @Type(() => Number)
   @IsOptional()
   @IsNumber()
-  seller: number;
+  saleFilter: number;
 
-  @Type(() => Number)
+  @Transform(({ value }) => {
+    return [true, 'enabled', 'true'].indexOf(value) > -1;
+  })
   @IsOptional()
-  @IsNumber()
-  winner: number;
+  @IsBoolean()
+  bidded: boolean;
+
+  @Transform(({ value }) => {
+    return [true, 'enabled', 'true'].indexOf(value) > -1;
+  })
+  @IsOptional()
+  @IsBoolean()
+  won: boolean;
+
+  @Transform(({ value }) => {
+    return [true, 'enabled', 'true'].indexOf(value) > -1;
+  })
+  @IsOptional()
+  @IsBoolean()
+  favorited: boolean;
 
   @Type(() => Number)
   @IsOptional()

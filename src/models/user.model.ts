@@ -5,7 +5,7 @@ import { Exclude, Expose } from 'class-transformer';
 
 import { Role } from '../enums/role.enum';
 import { UserGroup } from '../enums/user-group.enum';
-import { Product, Rating } from '.';
+import { Rating } from '.';
 
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
@@ -55,18 +55,17 @@ export class User extends TimeStamps {
   @prop({ required: true, default: 0 })
   point?: number;
 
-  @prop({ ref: () => Rating, type: () => Number })
-  ratings?: mongoose.Types.Array<Ref<Rating, number>>;
+  @prop({ required: true, default: 0 })
+  ratingCount?: number;
 
   @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
-  @prop({ default: false })
-  requestUpgrade?: boolean;
+  @prop({ required: true, default: false })
+  requestUpgrade!: boolean;
 
   @Expose({ toPlainOnly: true, groups: [UserGroup.ADMIN, UserGroup.ME] })
   @prop()
   canSellUntil?: Date;
 
-  @Expose({ toPlainOnly: true, groups: [UserGroup.ME] })
-  @prop({ ref: () => Product, type: () => Number })
-  watchlist?: mongoose.Types.Array<Ref<Product, number>>;
+  @prop({ required: true, default: false })
+  banned!: boolean;
 }

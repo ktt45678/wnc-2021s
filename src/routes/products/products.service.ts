@@ -2,6 +2,8 @@ import { Document, startSession } from 'mongoose';
 import slugify from 'slugify';
 import { Server } from 'socket.io';
 import { BeAnObject, IObjectWithTypegooseFunction } from '@typegoose/typegoose/lib/types';
+import path from 'path';
+import fs from 'fs';
 
 import { productModel, categoryModel, Product, bidModel, userModel, Bid, User, ratingModel } from '../../models';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -26,37 +28,54 @@ import { sendEmailSIB } from '../../modules/email.module';
 import { STATIC_DIR, STATIC_URL, WEBSITE_URL } from '../../config';
 
 export const create = async (authUser: AuthUser, createProductDto: CreateProductDto, files: MulterFile[]) => {
+  if (!files || files.length < 3) {
+    await Promise.all(files.map(file => fs.promises.unlink(file.path).catch(() => null)));
+    throw new HttpException({ status: 400, message: 'Cần ít nhất 3 ảnh' });
+  }
   const { name, description, category, startingPrice, priceStep, buyPrice, autoRenew, expiry } = createProductDto;
   let newProduct: Document<Product>;
   const session = await startSession();
-  await session.withTransaction(async () => {
-    const product = new productModel({ name, description, category, startingPrice, priceStep, buyPrice, autoRenew, expiry });
-    product.slug = slugify(name, { lower: true });
-    product.images = files.map(file => file.filename);
-    const selectedCategory = await categoryModel.findById(category);
-    if (!selectedCategory)
-      throw new HttpException({ status: 404, message: 'Không tìm thấy danh mục đã chọn' });
-    product.seller = authUser._id;
-    newProduct = await product.save({ session });
-    selectedCategory.products.push(newProduct._id);
-    await selectedCategory.save({ session });
-  });
+  try {
+    await session.withTransaction(async () => {
+      const product = new productModel({ name, description, category, startingPrice, priceStep, buyPrice, autoRenew, expiry });
+      product.slug = slugify(name, { lower: true });
+      product.images = files.map(file => file.filename);
+      const selectedCategory = await categoryModel.findById(category);
+      if (!selectedCategory)
+        throw new HttpException({ status: 404, message: 'Không tìm thấy danh mục đã chọn' });
+      product.seller = authUser._id;
+      newProduct = await product.save({ session });
+      selectedCategory.products.push(newProduct._id);
+      await selectedCategory.save({ session });
+    });
+  } catch (e) {
+    await Promise.all(files.map(file => fs.promises.unlink(file.path).catch(() => null)));
+    throw e;
+  }
   return newProduct.toObject();
 }
 
-export const findAll = async (paginateProductDto: PaginateProductDto) => {
+export const findAll = async (paginateProductDto: PaginateProductDto, authUser: AuthUser) => {
   const sortEnum = ['_id', 'name', 'category', 'startingPrice', 'priceStep', 'buyPrice', 'displayPrice', 'seller', 'winner',
     'bidCount', 'expiry', 'createdAt', 'updatedAt'];
   const fields = {
     _id: 1, name: 1, category: 1, images: 1, startingPrice: 1, priceStep: 1, buyPrice: 1, displayPrice: 1, autoRenew: 1, seller: 1,
-    winner: 1, bidCount: 1, ended: 1, expiry: 1, createdAt: 1, updatedAt: 1
+    winner: 1, bidCount: 1, favorites: 1, ended: 1, expiry: 1, createdAt: 1, updatedAt: 1
   };
-  const { page, limit, sort, search, category, ended, seller, winner, except } = paginateProductDto;
+  const { page, limit, sort, search, category, ended, saleFilter, bidded, won, favorited, except } = paginateProductDto;
   const filters: any = {};
   category != undefined && (filters.category = category);
   ended != undefined && (filters.ended = ended);
-  seller != undefined && (filters.seller = seller);
-  winner != undefined && (filters.winner = winner);
+  if (!authUser.isGuest) {
+    if (saleFilter != undefined) {
+      filters.seller = authUser._id;
+      saleFilter === 2 && (filters.winner = { $ne: null });
+      saleFilter === 3 && (filters.winner = null);
+    }
+    bidded && (filters.bidders = authUser._id);
+    won && (filters.winner = authUser._id);
+    favorited && (filters.favorites = authUser._id);
+  }
   except != undefined && (filters._id = { $ne: except });
   const aggregation = new MongooseAggregation({ page, limit, filters, fields, sortQuery: sort, search, sortEnum, fullTextSearch: true });
   const lookups: LookupOptions[] = [{
@@ -73,6 +92,8 @@ export const findAll = async (paginateProductDto: PaginateProductDto) => {
   if (data) {
     for (let i = 0; i < data.results.length; i++) {
       data.results[i].images = transformImages(data.results[i].images);
+      data.results[i].favorited = authUser.isGuest ? false : data.results[i].favorites.includes(authUser._id);
+      data.results[i].favorites = undefined;
     }
   }
   return data || new Paginated();
@@ -81,7 +102,8 @@ export const findAll = async (paginateProductDto: PaginateProductDto) => {
 export const findOne = async (id: number, authUser: AuthUser) => {
   const product = await productModel.findById(id, {
     _id: 1, name: 1, description: 1, category: 1, images: 1, startingPrice: 1, priceStep: 1, buyPrice: 1, displayPrice: 1, autoRenew: 1,
-    bids: 1, seller: 1, winner: 1, bidCount: 1, blacklist: 1, whitelist: 1, requestedUsers: 1, ended: 1, expiry: 1, createdAt: 1, updatedAt: 1
+    bids: 1, seller: 1, winner: 1, bidCount: 1, blacklist: 1, whitelist: 1, requestedUsers: 1, favorites: 1, ended: 1, expiry: 1,
+    createdAt: 1, updatedAt: 1
   }).populate([
     { path: 'category', select: { _id: 1, name: 1, subName: 1 } },
     { path: 'seller', select: { _id: 1, fullName: 1, point: 1 } },
@@ -110,10 +132,12 @@ export const findOne = async (id: number, authUser: AuthUser) => {
       (<any>product).blacklisted = (<User[]>product.blacklist).findIndex(u => u._id === authUser._id) > -1;
       (<any>product).whitelisted = (<User[]>product.whitelist).findIndex(u => u._id === authUser._id) > -1;
       (<any>product).requestedUser = (<User[]>product.requestedUsers).findIndex(u => u._id === authUser._id) > -1;
+      (<any>product).favorited = product.favorites.includes(authUser._id);
     }
     product.blacklist = undefined;
     product.whitelist = undefined;
     product.requestedUsers = undefined;
+    product.favorites = undefined;
     if (!product.ended)
       product.bids = undefined;
   }
@@ -163,11 +187,17 @@ export const remove = async (id: number, io: Server) => {
     if (!product)
       throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
     await Promise.all([
-      categoryModel.updateOne({ _id: <any>product.category }, { $pull: product._id }, { session }),
-      bidModel.deleteMany({ _id: { $in: product.bids } }, { session })
+      categoryModel.updateOne({ _id: <any>product.category }, { $pull: { products: product._id } }, { session }),
+      bidModel.deleteMany({ _id: { $in: product.bids } }, { session }),
+      ratingModel.deleteMany({ product: product._id }, { session })
     ]);
+    await Promise.all(product.images.map(image => fs.promises.unlink(path.join(__dirname, '..', '..', '..', 'public', image)).catch(() => null)));
+    io.in(`${IoRoom.USER}:${product.seller}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
+      content: `Sản phẩm ${product.name} đã bị gỡ bởi quản trị viên`,
+      createdAt: new Date()
+    });
+    io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REMOVE);
   });
-  io.in(`${IoRoom.PRODUCT_VIEW}:${id}`).emit(IoEvent.PRODUCT_VIEW_REMOVE);
 }
 
 export const createBid = async (id: number, bidProductDto: BidProductDto, authUser: AuthUser, io: Server) => {
@@ -182,9 +212,9 @@ export const createBid = async (id: number, bidProductDto: BidProductDto, authUs
   const user = await userModel.findById(authUser._id).lean().exec();
   if (user._id === product.seller)
     throw new HttpException({ status: 422, message: 'Bạn không thể tham gia đấu giá sản phẩm của chính mình' });
-  if (user.ratings.length && user.point < 80)
+  if (user.ratingCount && user.point < 80)
     throw new HttpException({ status: 422, message: 'Bạn không thể tham gia đấu giá do điểm thấp (dưới 80)' });
-  if (!user.ratings.length && !product.whitelist.includes(user._id))
+  if (!user.ratingCount && !product.whitelist.includes(user._id))
     throw new HttpException({ status: 422, message: 'Bạn không thể tham gia đấu giá do chưa có điểm, hãy yêu cầu người bán cho phép tham gia' });
   if (product.blacklist.includes(user._id))
     throw new HttpException({ status: 422, message: 'Bạn không thể tham gia đấu giá do đã bị người bán từ chối' });
@@ -228,6 +258,7 @@ export const createBid = async (id: number, bidProductDto: BidProductDto, authUs
       product.currentPrice = bidProductDto.price;
     }
     product.winner = user._id;
+    product.bidders.addToSet(user._id);
     if (product.autoRenew && (product.expiry.getTime() - Date.now() < 300000))
       product.expiry = new Date(product.expiry.getTime() + 600000);
     await product.save({ session });
@@ -345,7 +376,7 @@ export const requestBid = async (id: number, authUser: AuthUser, io: Server) => 
   const user = await userModel.findById(authUser._id).lean().exec();
   if (user._id === product.seller)
     throw new HttpException({ status: 422, message: 'Bạn không thể tham gia đấu giá sản phẩm của chính mình' });
-  if (user.ratings.length && user.point < 80)
+  if (user.ratingCount && user.point < 80)
     throw new HttpException({ status: 422, message: 'Bạn không thể dùng chức năng này do đã có điểm đánh giá' });
   if (product.blacklist.includes(user._id))
     throw new HttpException({ status: 422, message: 'Bạn không thể tham gia đấu giá do đã bị người bán từ chối' });
@@ -577,6 +608,7 @@ export const createProductRating = async (id: number, createRatingDto: CreateRat
   const checkRating = await ratingModel.findOne({ $and: [{ product: id }, { user: authUser._id }] }).lean().exec();
   if (checkRating)
     throw new HttpException({ status: 422, message: 'Bạn đã đánh giá người dùng này rồi' });
+  const targetUser: number = product.winner === authUser._id ? <number>product.seller : <number>product.winner;
   const session = await startSession();
   await session.withTransaction(async () => {
     const rating = new ratingModel({
@@ -585,7 +617,6 @@ export const createProductRating = async (id: number, createRatingDto: CreateRat
       type: createRatingDto.ratingType,
       comment: createRatingDto.comment
     });
-    const targetUser: number = product.winner === authUser._id ? <number>product.seller : <number>product.winner;
     rating.target = targetUser;
     await rating.save({ session });
     if (product.winner === authUser._id)
@@ -608,9 +639,30 @@ export const createProductRating = async (id: number, createRatingDto: CreateRat
       }).session(session)
     ]);
     const point = Math.round((positiveCount / (positiveCount + negativeCount)) * 100);
-    await userModel.updateOne({ _id: targetUser }, { point }, { session });
+    await userModel.updateOne({ _id: targetUser }, { $set: { point }, $inc: { ratingCount: 1 } }, { session });
   });
   io.in(`${IoRoom.PRODUCT_VIEW}:${product._id}`).emit(IoEvent.PRODUCT_VIEW_REFRESH);
+  io.in(`${IoRoom.USER}:${targetUser}`).emit(IoEvent.NOTIFICATION_PRODUCTS, {
+    content: `${authUser.fullName} đã gửi đánh giá cho sản phẩm ${product.name}`,
+    product: product._id,
+    createdAt: new Date()
+  });
+}
+
+export const addToFavorite = async (id: number, authUser: AuthUser) => {
+  const product = await productModel.findById(id).exec();
+  if (!product)
+    throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
+  product.favorites.addToSet(authUser._id);
+  await product.save();
+}
+
+export const removeFromFavorite = async (id: number, authUser: AuthUser) => {
+  const product = await productModel.findById(id).exec();
+  if (!product)
+    throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
+  product.favorites.pull(authUser._id);
+  await product.save();
 }
 
 export const findProductRating = (id: number) => {

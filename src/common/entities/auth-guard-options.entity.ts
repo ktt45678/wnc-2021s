@@ -5,5 +5,6 @@
  */
 export class AuthGuardOptions {
   allowGuest?: boolean;
+  requireActivate?: boolean;
   roles?: string[];
 }

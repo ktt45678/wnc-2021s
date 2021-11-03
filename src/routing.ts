@@ -6,6 +6,7 @@ import auth from './routes/auth/auth.controller';
 import categories from './routes/categories/categories.controller';
 import users from './routes/users/users.controller';
 import products from './routes/products/products.controller';
+import ratings from './routes/ratings/ratings.controller';
 
 const router: Router = Router();
 
@@ -15,6 +16,7 @@ router.use('/auth', auth);
 router.use('/users', users);
 router.use('/categories', categories);
 router.use('/products', products);
+router.use('/ratings', ratings);
 
 // Error-handling middleware
 router.use(errorHandler);

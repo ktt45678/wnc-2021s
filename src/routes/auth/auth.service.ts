@@ -50,6 +50,8 @@ export const authenticate = async (loginDto: LoginDto) => {
   const user = await userModel.findOne({ email: loginDto.email }).lean().exec();
   if (!user || !(await comparePassword(loginDto.password, user.password)))
     throw new HttpException({ status: 400, message: 'Email hoặc mật khẩu không đúng', code: StatusCode.INCORRECT_LOGIN });
+  if (user.banned)
+    throw new HttpException({ status: 403, message: 'Tài khoản của bạn đã bị khóa' });
   const transform = plainToClass(User, user, { groups: [UserGroup.ME] });
   return createJwtToken(transform);
 }
@@ -63,6 +65,7 @@ export const createJwtToken = async (user: User | LeanDocument<User>) => {
     address: user.address,
     role: user.role,
     activated: user.activated,
+    banned: user.banned,
     point: user.point,
     requestUpgrade: user.requestUpgrade,
     createdAt: user.createdAt,
@@ -92,6 +95,8 @@ export const recoverPassword = async (recoverPasswordDto: RecoverPasswordDto) =>
   const user = await userModel.findOneAndUpdate({ email: recoverPasswordDto.email }, { recoveryCode }, { new: true }).lean().exec();
   if (!user)
     throw new HttpException({ status: 404, message: 'Không tìm thấy email', code: StatusCode.EMAIL_NOT_EXIST });
+  if (user.banned)
+    throw new HttpException({ status: 403, message: 'Tài khoản của bạn đã bị khóa' });
   return sendEmailSIB(user.email, user.fullName, SIBTemplate.RESET_PASSWORD, {
     recipient_name: user.fullName,
     button_url: `${WEBSITE_URL}/auth/reset-password?id=${user._id}&code=${recoveryCode}`
@@ -157,11 +162,11 @@ export const confirmEmail = async (confirmEmailDto: ConfirmEmailDto) => {
   return createJwtToken(user);
 }
 
-const hashPassword = (password: string) => {
+export const hashPassword = (password: string) => {
   return bcrypt.hash(password, 10);
 }
 
-const comparePassword = (password: string, hash: string) => {
+export const comparePassword = (password: string, hash: string) => {
   return bcrypt.compare(password, hash);
 }
 

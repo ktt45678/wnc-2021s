@@ -8,6 +8,7 @@ import { User, Product } from '.';
 @modelOptions({ schemaOptions: { timestamps: true } })
 @plugin(AutoIncrementID, { startAt: 1 })
 @index({ product: 1, user: 1 })
+@index({ target: 1, createdAt: -1 })
 @index({ target: 1, type: 1, createdAt: -1 })
 export class Rating extends TimeStamps {
   @prop()

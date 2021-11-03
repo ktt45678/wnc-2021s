@@ -15,6 +15,8 @@ import { Bid, Category, Rating, User } from '.';
 @index({ seller: 1 })
 @index({ winner: 1 })
 @index({ bidCount: 1 })
+@index({ bidders: 1 })
+@index({ favorites: 1 })
 @index({ ended: 1 })
 @index({ expiry: 1 })
 @index({ name: 'text', slug: 'text' })
@@ -75,6 +77,12 @@ export class Product extends TimeStamps {
 
   @prop({ required: true, ref: () => User, type: () => Number })
   requestedUsers?: mongoose.Types.Array<Ref<User, number>>;
+
+  @prop({ required: true, ref: () => User, type: () => Number })
+  bidders?: mongoose.Types.Array<Ref<User, number>>;
+
+  @prop({ required: true, ref: () => User, type: () => Number })
+  favorites?: mongoose.Types.Array<Ref<User, number>>;
 
   @prop({ ref: () => Rating, type: () => Number })
   sellerRating?: Ref<Rating, number>;

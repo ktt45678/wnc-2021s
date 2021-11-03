@@ -28,18 +28,9 @@ router.get('/:id', authGuardMiddleware({ allowGuest: true }), async (req: Reques
   }
 });
 
-router.patch('/:id', validateBody(UpdateUserDto), async (req: Request<any, any, UpdateUserDto>, res: Response, next: NextFunction) => {
+router.patch('/:id', authGuardMiddleware(), validateBody(UpdateUserDto), async (req: Request<any, any, UpdateUserDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.update(+req.params.id || 0, req.body);
-    res.status(200).send(result);
-  } catch (e) {
-    next(e);
-  }
-});
-
-router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const result = await categoryService.remove(+req.params.id || 0);
+    const result = await categoryService.update(+req.params.id || 0, req.body, req.user);
     res.status(200).send(result);
   } catch (e) {
     next(e);

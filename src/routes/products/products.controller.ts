@@ -19,7 +19,7 @@ import { CreateRatingDto } from './dto/create-rating.dto';
 
 const router: Router = Router();
 
-router.post('/', authGuardMiddleware({ roles: [Role.SELLER] }), async (req: Request<any, any, CreateProductDto>, res: Response, next: NextFunction) => {
+router.post('/', authGuardMiddleware({ roles: [Role.SELLER], requireActivate: true }), (req: Request<any, any, CreateProductDto>, res: Response, next: NextFunction) => {
   try {
     upload.array('images', 30)(req, res, async (err: any) => {
       if (err)
@@ -33,19 +33,21 @@ router.post('/', authGuardMiddleware({ roles: [Role.SELLER] }), async (req: Requ
           code: errors[0]?.contexts ? Object.values(errors[0]?.contexts)[0]?.code : -1
         }));
       }
-      if (!req.files || req.files.length < 3)
-        return next(new HttpException({ status: 400, message: 'Cần ít nhất 3 ảnh' }));
-      const result = await productService.create(req.user, req.body, <any>req.files);
-      res.status(200).send(result);
+      try {
+        const result = await productService.create(req.user, req.body, <any>req.files);
+        res.status(200).send(result);
+      } catch (err) {
+        return next(err);
+      }
     });
   } catch (e) {
     next(e);
   }
 });
 
-router.get('/', validateQuery(PaginateProductDto), async (req: Request<any, any, any, ParsedQs & PaginateProductDto>, res: Response, next: NextFunction) => {
+router.get('/', authGuardMiddleware({ allowGuest: true }), validateQuery(PaginateProductDto), async (req: Request<any, any, any, ParsedQs & PaginateProductDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await productService.findAll(req.query);
+    const result = await productService.findAll(req.query, req.user);
     res.status(200).send(result);
   } catch (e) {
     next(e);
@@ -79,7 +81,7 @@ router.delete('/:id', authGuardMiddleware({ roles: [Role.ADMIN] }), async (req: 
   }
 });
 
-router.post('/:id/bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), validateBody(BidProductDto), async (req: Request<any, any, BidProductDto>, res: Response, next: NextFunction) => {
+router.post('/:id/bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER], requireActivate: true }), validateBody(BidProductDto), async (req: Request<any, any, BidProductDto>, res: Response, next: NextFunction) => {
   try {
     await productService.createBid(+req.params.id || 0, req.body, req.user, res.io);
     res.status(204).send();
@@ -97,7 +99,7 @@ router.get('/:id/bid', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
-router.post('/:id/request-bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/request-bid', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER], requireActivate: true }), async (req: Request, res: Response, next: NextFunction) => {
   try {
     await productService.requestBid(+req.params.id || 0, req.user, res.io);
     res.status(204).send();
@@ -139,6 +141,24 @@ router.get('/:id/rating', async (req: Request, res: Response, next: NextFunction
     if (!result)
       return res.status(204).send();
     res.status(200).send(result);
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.post('/:id/favorite', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await productService.addToFavorite(+req.params.id || 0, req.user);
+    res.status(204).send();
+  } catch (e) {
+    next(e);
+  }
+});
+
+router.delete('/:id/favorite', authGuardMiddleware({ roles: [Role.BIDDER, Role.SELLER] }), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await productService.removeFromFavorite(+req.params.id || 0, req.user);
+    res.status(204).send();
   } catch (e) {
     next(e);
   }
