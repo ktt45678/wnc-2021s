@@ -10,9 +10,9 @@ import { UpdateUserDto } from './dto/update-user.dto';
 
 const router: Router = Router();
 
-router.get('/', validateQuery(PaginateUserDto), async (req: Request<any, any, any, ParsedQs & PaginateUserDto>, res: Response, next: NextFunction) => {
+router.get('/', authGuardMiddleware({ allowGuest: true }), validateQuery(PaginateUserDto), async (req: Request<any, any, any, ParsedQs & PaginateUserDto>, res: Response, next: NextFunction) => {
   try {
-    const result = await categoryService.findAll(req.query);
+    const result = await categoryService.findAll(req.query, req.user);
     res.status(200).send(result);
   } catch (e) {
     next(e);

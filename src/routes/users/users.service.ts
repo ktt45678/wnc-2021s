@@ -1,4 +1,5 @@
 import { nanoid } from 'nanoid/async';
+import { Server } from 'socket.io';
 
 import { userModel, User } from '../../models';
 import { HttpException } from '../../common/exceptions/http.exception';
@@ -11,9 +12,11 @@ import { AuthUser } from '../auth/entities/auth-user.entity';
 import { Role } from '../../enums/role.enum';
 import * as authService from '../auth/auth.service';
 
-export const findAll = async (paginateUserDto: PaginateUserDto) => {
+export const findAll = async (paginateUserDto: PaginateUserDto, authUser: AuthUser) => {
   const sortEnum = ['_id', 'email', 'fullName', 'birthdate', 'point', 'role'];
-  const fields = { _id: 1, email: 1, fullName: 1, birthdate: 1, role: 1, point: 1, requestUpgrade: 1 };
+  const fields = !authUser.isGuest && authUser.role === Role.ADMIN ?
+    { _id: 1, email: 1, fullName: 1, birthdate: 1, role: 1, point: 1, requestUpgrade: 1 } :
+    { _id: 1, fullName: 1, role: 1, point: 1 };
   const { page, limit, sort, search, filter } = paginateUserDto;
   const filters: any = search ? { fullName: { $regex: escapeRegExp(search), $options: 'i' } } : {};
   filter === 1 && (filters.requestUpgrade = true);
@@ -45,6 +48,8 @@ export const update = async (id: number, updateUserDto: UpdateUserDto, authUser:
   }).exec();
   if (!user)
     throw new HttpException({ status: 404, message: 'Người dùng không tồn tại' });
+  if (updateUserDto.email !== user.email && (await authService.findByEmail(updateUserDto.email)))
+    throw new HttpException({ status: 400, message: 'Email đã được sử dụng' });
   let authChanged = false;
   if (user._id === authUser._id) {
     if (updateUserDto.currentPassword != undefined && !(await authService.comparePassword(updateUserDto.currentPassword, user.password)))
@@ -74,15 +79,16 @@ export const update = async (id: number, updateUserDto: UpdateUserDto, authUser:
     updateUserDto.address != undefined && (user.address = updateUserDto.address);
     updateUserDto.email != undefined && (user.email = updateUserDto.email);
     updateUserDto.banned != undefined && (user.banned = updateUserDto.banned);
-    updateUserDto.requestUpgrade != undefined && (user.requestUpgrade = updateUserDto.requestUpgrade);
-    if (updateUserDto.upgrade) {
-      user.role = Role.SELLER;
-      user.canSellUntil = new Date(Date.now() + 604800000);
+    if (updateUserDto.upgrade != undefined) {
+      if (updateUserDto.upgrade) {
+        user.role = Role.SELLER;
+        user.canSellUntil = new Date(Date.now() + 604800000);
+      }
       user.requestUpgrade = false;
     }
     if (updateUserDto.downgrade) {
       user.role = Role.BIDDER;
-      user.canSellUntil = new Date();
+      user.canSellUntil = undefined;
       user.requestUpgrade = false;
     }
   } else {
@@ -98,4 +104,14 @@ export const update = async (id: number, updateUserDto: UpdateUserDto, authUser:
   result.activationCode = undefined;
   result.password = undefined;
   return result;
+}
+
+export const handleExpiredSellers = async (io: Server) => {
+  const users = await userModel.find({ role: Role.SELLER, canSellUntil: { $ne: null, $lte: new Date() } }).exec();
+  for (let i = 0; i < users.length; i++) {
+    console.log(`Seller ${users[i]._id} has been expired`);
+    users[i].role = Role.BIDDER;
+    users[i].canSellUntil = undefined;
+    await users[i].save();
+  }
 }

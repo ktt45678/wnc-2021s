@@ -9,5 +9,10 @@ export default function (io: Server) {
     await productsService.handleAuctionsEnd(io);
   });
 
+  const downgradeJob = new CronJob('0 0 * * *', async () => {
+    await usersService.handleExpiredSellers(io);
+  });
+
   auctionJob.start();
+  downgradeJob.start();
 }

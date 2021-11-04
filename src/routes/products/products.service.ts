@@ -83,10 +83,10 @@ export const findAll = async (paginateProductDto: PaginateProductDto, authUser: 
     project: { _id: 1, name: 1, subName: 1 }
   }, {
     from: 'users', localField: 'seller', foreignField: '_id', as: 'seller', isArray: false,
-    project: { _id: 1, fullName: 1 }
+    project: { _id: 1, fullName: 1, point: 1 }
   }, {
     from: 'users', localField: 'winner', foreignField: '_id', as: 'winner', isArray: false,
-    project: { _id: 1, fullName: 1 }
+    project: { _id: 1, fullName: 1, point: 1 }
   }];
   const [data] = await productModel.aggregate(aggregation.buildLookup(lookups)).exec();
   if (data) {

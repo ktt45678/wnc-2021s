@@ -13,7 +13,6 @@ export class UpdateUserDto {
   @Type(() => String)
   @IsOptional()
   @IsEmail(undefined, { context: { code: StatusCode.IS_EMAIL } })
-  @EmailExist({ context: { code: StatusCode.EMAIL_USED } })
   email: string;
 
   @Type(() => String)
