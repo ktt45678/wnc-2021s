@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsDate, IsEmail, IsNotEmpty, Length, Matches, MaxDate } from 'class-validator';
+import { IsDate, IsEmail, IsNotEmpty, IsOptional, Length, Matches, MaxDate } from 'class-validator';
 
 import { EmailExist } from '../../../common/validators/email-exist.decorator';
 import { ReCaptcha } from '../../../common/validators/recaptcha.decorator';
@@ -17,11 +17,13 @@ export class RegisterDto {
 
   @Type(() => String)
   @Transform(({ value }) => {
+    if (value == undefined) return value;
     const d = new Date(value);
     if (d instanceof Date && !isNaN(d.getTime()))
       return d;
-    return value;
+    return undefined;
   }, { toClassOnly: true })
+  @IsOptional()
   @IsDate({ context: { code: StatusCode.IS_DATE } })
   @MaxDate(new Date(), { context: { code: StatusCode.MAX_DATE } })
   birthdate: Date;

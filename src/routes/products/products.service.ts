@@ -203,7 +203,7 @@ export const remove = async (id: number, io: Server) => {
 export const createBid = async (id: number, bidProductDto: BidProductDto, authUser: AuthUser, io: Server) => {
   const product = await productModel.findById(id, {
     _id: 1, name: 1, description: 1, category: 1, images: 1, startingPrice: 1, priceStep: 1, buyPrice: 1, currentPrice: 1, displayPrice: 1,
-    autoRenew: 1, bids: 1, seller: 1, winner: 1, bidCount: 1, blacklist: 1, whitelist: 1, requestedUsers: 1, ended: 1, expiry: 1, createdAt: 1, updatedAt: 1
+    autoRenew: 1, bids: 1, seller: 1, winner: 1, bidCount: 1, bidders: 1, blacklist: 1, whitelist: 1, requestedUsers: 1, ended: 1, expiry: 1, createdAt: 1, updatedAt: 1
   }).exec();
   if (!product)
     throw new HttpException({ status: 404, message: 'Không tìm thấy sản phẩm' });
@@ -277,6 +277,7 @@ export const createBid = async (id: number, bidProductDto: BidProductDto, authUs
     }
   ]);
   product.currentPrice = undefined;
+  product.bidders = undefined;
   for (let i = 0; i < product.bids.length; i++) {
     if (!product.ended)
       (<Bid>product.bids[i]).price = undefined;

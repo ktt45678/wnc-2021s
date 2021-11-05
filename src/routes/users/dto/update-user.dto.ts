@@ -17,10 +17,11 @@ export class UpdateUserDto {
 
   @Type(() => String)
   @Transform(({ value }) => {
+    if (value == undefined) return value;
     const d = new Date(value);
     if (d instanceof Date && !isNaN(d.getTime()))
       return d;
-    return value;
+    return undefined;
   }, { toClassOnly: true })
   @IsOptional()
   @IsDate({ context: { code: StatusCode.IS_DATE } })
