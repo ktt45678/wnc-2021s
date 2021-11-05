@@ -34,7 +34,7 @@ export default (options?: AuthGuardOptions) => {
         if (!options.roles.includes(user.role))
           return res.status(403).send({ message: 'Bạn không có quyền sử dụng tính năng này' });
       if (user.banned)
-        return res.status(403).send({ message: 'Tài khoản của bạn đã bị khóa' });
+        return res.status(401).send({ message: 'Tài khoản của bạn đã bị khóa' });
       if (options.requireActivate && !user.activated)
         return res.status(403).send({ message: 'Bạn cần kích hoạt tài khoản để sử dụng chức năng này' });
       req.user = user;
