@@ -2,14 +2,12 @@ import multer from 'multer';
 import path from 'path';
 import slugify from 'slugify';
 
-import { HttpException } from '../common/exceptions/http.exception';
-
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, path.join(__dirname, '..', '..', 'public'));
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '__' + slugify(file.originalname, { lower: true }));
+    cb(null, Date.now() + '__' + slugify(file.originalname));
   }
 });
 

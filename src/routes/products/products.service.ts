@@ -25,12 +25,16 @@ import { IoEvent } from '../../enums/io-event.enum';
 import { SIBTemplate } from '../../enums/sendinblue-template.enum';
 import { RatingType } from '../../enums/rating-type.enum';
 import { sendEmailSIB } from '../../modules/email.module';
+import { resizeImage } from '../../modules/sharp.module';
 import { STATIC_DIR, STATIC_URL, WEBSITE_URL } from '../../config';
 
 export const create = async (authUser: AuthUser, createProductDto: CreateProductDto, files: MulterFile[]) => {
   if (!files || files.length < 3) {
     await Promise.all(files.map(file => fs.promises.unlink(file.path).catch(() => null)));
     throw new HttpException({ status: 400, message: 'Cần ít nhất 3 ảnh' });
+  }
+  for (let i = 0; i < files.length; i++) {
+    await resizeImage(files[i].path);
   }
   const { name, description, category, startingPrice, priceStep, buyPrice, autoRenew, expiry } = createProductDto;
   let newProduct: Document<Product>;
