@@ -1,6 +1,8 @@
 import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsDate, IsNotEmpty, IsNumber, IsOptional, Length, Max, MaxLength, Min, MinDate } from 'class-validator';
 
+import { PropertyGte } from '../../../common/validators/property-gte.decorator';
+
 export class CreateProductDto {
   @Type(() => String)
   @IsNotEmpty()
@@ -34,7 +36,7 @@ export class CreateProductDto {
   @Type(() => Number)
   @IsOptional()
   @IsNumber()
-  @Min(1_000)
+  @PropertyGte('startingPrice')
   @Max(100_000_000_000)
   buyPrice: number;
 

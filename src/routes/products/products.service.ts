@@ -224,19 +224,22 @@ export const createBid = async (id: number, bidProductDto: BidProductDto, authUs
     throw new HttpException({ status: 422, message: 'Bạn không thể tham gia đấu giá do đã bị người bán từ chối' });
   if (product.startingPrice > bidProductDto.price)
     throw new HttpException({ status: 422, message: 'Mức giá phải cao hơn (hoặc bằng) giá khởi điểm' });
-  if (product.winner && product.displayPrice + product.priceStep > bidProductDto.price)
-    throw new HttpException({ status: 422, message: 'Mức giá phải cao hơn (hoặc bằng) giá hiện tại + bước giá' });
+  if (!product.buyPrice || bidProductDto.price < product.buyPrice)
+    if (product.winner && product.displayPrice + product.priceStep > bidProductDto.price)
+      throw new HttpException({ status: 422, message: 'Mức giá phải cao hơn (hoặc bằng) giá hiện tại + bước giá' });
   if (product.winner && product.currentPrice > bidProductDto.price) {
     product.displayPrice = bidProductDto.price;
     await product.save();
     await emitRefreshProduct(product, io);
     throw new HttpException({ status: 422, message: 'Đấu giá thất bạn do đã có người ra giá cao hơn bạn' });
   }
-  if (product.winner && product.currentPrice + product.priceStep > bidProductDto.price) {
-    product.displayPrice = product.currentPrice;
-    await product.save();
-    await emitRefreshProduct(product, io);
-    throw new HttpException({ status: 422, message: 'Đấu giá thất bạn do mức giá của bạn chưa đủ để vượt qua người hiện tại' });
+  if (!product.buyPrice || bidProductDto.price < product.buyPrice) {
+    if (product.winner && product.currentPrice + product.priceStep > bidProductDto.price) {
+      product.displayPrice = product.currentPrice;
+      await product.save();
+      await emitRefreshProduct(product, io);
+      throw new HttpException({ status: 422, message: 'Đấu giá thất bạn do mức giá của bạn chưa đủ để vượt qua người hiện tại' });
+    }
   }
   const previousWinnerId = <number>product.winner;
   const buyPriceBidded = product.buyPrice && bidProductDto.price >= product.buyPrice;
