@@ -98,6 +98,8 @@ export const findAll = async (paginateProductDto: PaginateProductDto, authUser: 
       data.results[i].images = transformImages(data.results[i].images);
       data.results[i].favorited = authUser.isGuest ? false : data.results[i].favorites.includes(authUser._id);
       data.results[i].favorites = undefined;
+      if (authUser.isGuest || data.results[i].seller._id !== authUser._id)
+        data.results[i].winner && (data.results[i].winner.fullName = maskString(data.results[i].winner.fullName));
     }
   }
   return data || new Paginated();
@@ -144,6 +146,7 @@ export const findOne = async (id: number, authUser: AuthUser) => {
     product.favorites = undefined;
     if (!product.ended)
       product.bids = undefined;
+    product.winner && ((<User>product.winner).fullName = maskString((<User>product.winner).fullName));
   }
   product.images = transformImages(product.images);
   return product;
