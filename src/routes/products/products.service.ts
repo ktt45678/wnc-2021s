@@ -305,7 +305,7 @@ export const createBid = async (id: number, bidProductDto: BidProductDto, authUs
         recipient_name: previousWinner.fullName,
         product_name: product.name,
         current_price: priceString,
-        bidder_name: (<User>product.winner).fullName,
+        bidder_name: 'một người khác',
         button_url: `${WEBSITE_URL}/home/products/${product._id}`
       });
     }
@@ -348,7 +348,7 @@ export const createBid = async (id: number, bidProductDto: BidProductDto, authUs
   //  if ((<User>(<Bid>product.bids[i]).bidder)._id !== user._id && !receivers.includes(user._id))
   //    receivers.push(`${IoRoom.USER}:${(<User>(<Bid>product.bids[i]).bidder)._id}`);
   io.in(receivers).emit(IoEvent.NOTIFICATION_PRODUCTS, {
-    content: `${user.fullName} đã ra giá ${priceString} cho sản phẩm ${product.name}`,
+    content: `Đã có người ra giá ${priceString} cho sản phẩm ${product.name}`,
     product: id,
     createdAt: new Date()
   });
